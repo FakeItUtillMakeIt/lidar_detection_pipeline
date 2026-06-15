@@ -1,5 +1,0 @@
-/home/sevnce/lj/project/lidar_detection_pipeline/build/CMakeFiles/lidar_core.dir
-/home/sevnce/lj/project/lidar_detection_pipeline/build/CMakeFiles/pipeline.dir
-/home/sevnce/lj/project/lidar_detection_pipeline/build/CMakeFiles/lidar_app.dir
-/home/sevnce/lj/project/lidar_detection_pipeline/build/CMakeFiles/edit_cache.dir
-/home/sevnce/lj/project/lidar_detection_pipeline/build/CMakeFiles/rebuild_cache.dir
