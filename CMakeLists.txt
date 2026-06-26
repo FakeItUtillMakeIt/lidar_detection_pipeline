@@ -18,6 +18,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options a
 option(WITH_ROS2 "Build with ROS2 support" OFF)
 option(WITH_OPENCV "Build with OpenCV BEV visualization" ON)
 option(WITH_TRACK "Build with tracking support" ON)
+option(WITH_ATTRIBUTE "Build with attribute node" ON)
 
 # OpenCV
 if(WITH_OPENCV)
@@ -137,7 +138,6 @@ if(WITH_TRACK)
     list(APPEND TRACK_NODE_SOURCES
         src/nodes/track/ocsort_adapter.cpp
         src/nodes/track/tracker_node.cpp
-        src/nodes/track/attribute_node.cpp
         3rd_party/tracker/OCSort/OCSort.cpp
         3rd_party/tracker/OCSort/KalmanBoxTracker.cpp
         3rd_party/tracker/OCSort/KalmanFilter.cpp
@@ -147,11 +147,19 @@ if(WITH_TRACK)
     )
 endif()
 
+# 属性节点
+if(WITH_ATTRIBUTE)
+    set(ATTRIBUTE_NODE_SOURCES
+        src/nodes/attribute/attribute_node.cpp
+    )
+endif()
+
 add_library(lidar_nodes SHARED
     ${SOURCE_NODE_SOURCES}
     ${INFER_NODE_SOURCES}
     ${OUTPUT_NODE_SOURCES}
     ${TRACK_NODE_SOURCES}
+    ${ATTRIBUTE_NODE_SOURCES}
 )
 
 target_include_directories(lidar_nodes
@@ -163,6 +171,7 @@ target_include_directories(lidar_nodes
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/common
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/output
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/track
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/attribute
         ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/tracker/OCSort
 )
 
