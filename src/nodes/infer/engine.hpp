@@ -7,7 +7,7 @@
 #include <queue>
 #include <functional>
 #include <cuda_runtime_api.h>
-#include "types.hpp"
+#include "lidar_core/core/types.hpp"
 #include "detector.hpp"
 
 namespace pipeline {

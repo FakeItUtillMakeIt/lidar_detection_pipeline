@@ -2,7 +2,7 @@
 #define __READER_HPP__
 
 #include <memory>
-#include "types.hpp"
+#include "lidar_core/core/types.hpp"
 
 namespace pipeline {
 
