@@ -3,10 +3,8 @@
 
 #include "lidar_core/core/node.h"
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <nlohmann/json.hpp>
 
 namespace lidar_core {
@@ -16,44 +14,22 @@ using NodeCreator = std::function<std::shared_ptr<Node>(const nlohmann::json&)>;
 
 class NodeFactory {
 public:
-    static NodeFactory& instance() {
-        static NodeFactory factory;
-        return factory;
-    }
+    static NodeFactory& instance();
 
-    void registerCreator(const std::string& type, NodeCreator creator) {
-        creators_[type] = std::move(creator);
-        std::cout << "[NodeFactory] Registered node type: " << type << std::endl;
-    }
-
-    std::shared_ptr<Node> create(const std::string& type, const nlohmann::json& params) {
-        std::cout << "[NodeFactory] Creating node type: " << type << std::endl;
-        std::cout << "[NodeFactory] Registered node types count: " << creators_.size() << std::endl;
-        
-        for (const auto& [key, value] : creators_) {
-            std::cout << "[NodeFactory]   Registered: " << key << std::endl;
-        }
-
-        auto it = creators_.find(type);
-        if (it != creators_.end()) {
-            std::cout << "[NodeFactory] Found creator for type: " << type << std::endl;
-            return it->second(params);
-        }
-
-        std::cerr << "[NodeFactory] Node type not found: " << type << std::endl;
-        return nullptr;
-    }
+    void registerCreator(const std::string& type, NodeCreator creator);
+    std::shared_ptr<Node> create(const std::string& type, const nlohmann::json& params);
 
 private:
-    NodeFactory() = default;
-    std::unordered_map<std::string, NodeCreator> creators_;
+    NodeFactory();
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 template<typename T>
 class NodeRegistrar {
 public:
     NodeRegistrar(const std::string& type) {
-        NodeFactory::instance().registerCreator(type, [](const nlohmann::json& params) -> std::shared_ptr<Node> {
+        NodeFactory::instance().registerCreator(type, [](const nlohmann::json&) -> std::shared_ptr<Node> {
             return std::make_shared<T>();
         });
     }

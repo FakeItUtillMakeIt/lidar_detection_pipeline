@@ -1,6 +1,6 @@
 // src/nodes/track/tracker_node.cpp
 #include "tracker_node.h"
-#include "src/nodes/registry/node_factory.h"
+#include "node_factory.h"
 #include <iostream>
 
 namespace lidar_core {

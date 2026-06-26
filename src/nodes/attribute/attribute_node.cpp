@@ -1,6 +1,6 @@
-// src/nodes/track/attribute_node.cpp
+// src/nodes/attribute/attribute_node.cpp
 #include "attribute_node.h"
-#include "src/nodes/registry/node_factory.h"
+#include "node_factory.h"
 #include <cmath>
 #include <iostream>
 

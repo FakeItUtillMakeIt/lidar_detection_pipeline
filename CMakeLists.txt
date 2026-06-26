@@ -52,8 +52,7 @@ set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -Xcompiler -O3")
 include(FetchContent)
 FetchContent_Declare(
     nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.2
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/3rd_party/nlohmann_json
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
@@ -78,6 +77,8 @@ link_directories(
 add_library(lidar_core SHARED
     src/core/node.cpp
     src/core/pipeline_manager.cpp
+    src/core/async_pipeline.cpp
+    src/nodes/registry/node_factory.cpp
 )
 
 set_target_properties(lidar_core PROPERTIES
@@ -90,6 +91,10 @@ target_include_directories(lidar_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/registry
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/source
 )
 
 target_link_libraries(lidar_core

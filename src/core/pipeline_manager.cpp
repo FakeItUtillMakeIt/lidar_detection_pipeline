@@ -4,7 +4,7 @@
 #include <iostream>
 
 // 节点工厂头文件
-#include "src/nodes/registry/node_factory.h"
+#include "nodes/registry/node_factory.h"
 
 // 节点头文件
 #include "lidar_core/nodes/i_source_node.h"
@@ -73,7 +73,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
             if (type.find("output") != std::string::npos || type.find("visualizer") != std::string::npos) {
                 auto output_node = std::dynamic_pointer_cast<nodes::IOutputNode>(node);
                 if (output_node) {
-                    output_node->setOutputDir(params.value("output_dir", "../out"));
+                    output_node->setOutputDir(params.value("output_dir", "./out"));
                     output_node->setOutputType(params.value("output_type", "file"));
                 }
             }

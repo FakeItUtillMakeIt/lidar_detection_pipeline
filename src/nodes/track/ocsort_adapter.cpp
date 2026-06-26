@@ -1,6 +1,6 @@
 // src/nodes/track/ocsort_adapter.cpp
 #include "ocsort_adapter.h"
-#include "3rd_party/tracker/OCSort/OCSort.hpp"
+#include "OCSort.hpp"
 #include <Eigen/Dense>
 #include <iostream>
 
