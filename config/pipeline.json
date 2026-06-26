@@ -26,7 +26,7 @@
             "params": {
                 "tracker_type": "ocsort",
                 "ocsort_config": {
-                    "det_thresh": 0.3,
+                    "det_thresh": 0.1,
                     "max_age": 30,
                     "min_hits": 3,
                     "iou_threshold": 0.3,
@@ -63,7 +63,7 @@
         {"from": "source", "to": "infer"},
         {"from": "infer", "to": "tracker"},
         {"from": "tracker", "to": "attribute"},
-        {"from": "infer", "to": "file_output"},
-        {"from": "infer", "to": "bev_vis"}
+        {"from": "attribute", "to": "file_output"},
+        {"from": "attribute", "to": "bev_vis"}
     ]
 }

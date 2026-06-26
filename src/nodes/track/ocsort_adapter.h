@@ -8,13 +8,11 @@
 namespace lidar_core {
 namespace nodes {
 
-// OCSort适配器，用于3D LiDAR BEV跟踪
 class OCSortAdapter {
 public:
     OCSortAdapter();
     ~OCSortAdapter();
 
-    // 初始化跟踪器
     bool init(float det_thresh = 0.3f,
               int max_age = 30,
               int min_hits = 3,
@@ -23,13 +21,10 @@ public:
               float inertia = 0.2f,
               bool use_byte = false);
 
-    // 更新跟踪器，返回带track_id的检测结果
-    std::vector<core::Detection> update(const std::vector<core::Detection>& detections);
+    // 在原始检测上标注 track_id，不修改其他字段
+    void update(std::vector<core::Detection>& detections);
 
-    // 获取活跃跟踪数量
     int getActiveTrackCount() const;
-
-    // 重置跟踪器
     void reset();
 
 private:

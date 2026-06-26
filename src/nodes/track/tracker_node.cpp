@@ -85,11 +85,8 @@ void TrackerNode::pushData(std::shared_ptr<core::BasePacket> packet) {
         return;
     }
 
-    // 运行跟踪
-    auto tracked_detections = adapter_->update(det_packet->detections);
-
-    // 更新检测包
-    det_packet->detections = std::move(tracked_detections);
+    // 运行跟踪 - 直接在原始检测上标注track_id
+    adapter_->update(det_packet->detections);
 
     // 广播给下游节点
     broadcast(det_packet);

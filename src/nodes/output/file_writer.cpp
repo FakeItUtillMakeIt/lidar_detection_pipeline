@@ -26,7 +26,9 @@ void FileWriter::write(const std::vector<Detection>& dets, uint64_t frame_id) {
     for (const auto& det : dets) {
         ofs << det.x << " " << det.y << " " << det.z << " "
             << det.w << " " << det.l << " " << det.h << " "
-            << det.rt << " " << det.class_id << " " << det.score << "\n";
+            << det.rt << " " << det.class_id << " " << det.score << " "
+            << det.track_id << " " << det.vx << " " << det.vy << " " 
+            << det.speed << " " << det.heading << "\n";
     }
 }
 

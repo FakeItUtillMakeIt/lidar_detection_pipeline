@@ -87,6 +87,12 @@ void FileOutputNode::pushData(std::shared_ptr<core::BasePacket> packet) {
         detection.class_id = det.class_id;
         detection.score = det.score;
         detection.frame_id = det.frame_id;
+        detection.track_id = det.track_id;
+        detection.track_age = det.track_age;
+        detection.vx = det.vx;
+        detection.vy = det.vy;
+        detection.speed = det.speed;
+        detection.heading = det.heading;
         detections.push_back(detection);
     }
 
