@@ -20,12 +20,12 @@ static volatile bool g_running = true;
 static void signalHandler(int) { g_running = false; }
 
 static void printHelp() {
-    std::cout << "Usage: lidar_app [options]\n"
-              << "Options:\n"
-              << "  --config <path>    JSON config file path\n"
-              << "  --async            Enable async pipeline (reader/infer in parallel)\n"
-              << "  --queue <size>     Async queue size (default: 3)\n"
-              << "  --help             Show this help\n";
+    LOG_INFO_FMT("[Main] Usage: lidar_app [options]");
+    LOG_INFO_FMT("[Main] Options:");
+    LOG_INFO_FMT("[Main]   --config <path>    JSON config file path");
+    LOG_INFO_FMT("[Main]   --async            Enable async pipeline (reader/infer in parallel)");
+    LOG_INFO_FMT("[Main]   --queue <size>     Async queue size (default: 3)");
+    LOG_INFO_FMT("[Main]   --help             Show this help");
 }
 
 // 同步模式
@@ -34,16 +34,16 @@ static int runSync(const nlohmann::json& config) {
     auto pipeline = std::make_shared<lidar_core::core::Pipeline>(pipeline_id);
 
     if (!pipeline->buildFromJson(config)) {
-        std::cerr << "Error: Failed to build pipeline" << std::endl;
+        LOG_ERROR_FMT("[Main] Failed to build pipeline from config");
         return 1;
     }
 
     if (!pipeline->start()) {
-        std::cerr << "Error: Failed to start pipeline" << std::endl;
+        LOG_ERROR_FMT("[Main] Failed to start pipeline");
         return 1;
     }
 
-    std::cout << "Pipeline ready (sync mode). Processing..." << std::endl;
+    LOG_INFO_FMT("[Main] Pipeline ready (sync mode). Processing...");
 
     auto source_node = std::dynamic_pointer_cast<lidar_core::nodes::ISourceNode>(
         pipeline->getNode("source"));
@@ -51,7 +51,7 @@ static int runSync(const nlohmann::json& config) {
         pipeline->getNode("infer"));
 
     if (!source_node || !infer_node) {
-        std::cerr << "Error: Missing required nodes" << std::endl;
+        LOG_ERROR_FMT("[Main] Missing required nodes");
         pipeline->stop();
         return 1;
     }
@@ -71,9 +71,9 @@ static int runSync(const nlohmann::json& config) {
     auto total_end = std::chrono::high_resolution_clock::now();
     double total_sec = std::chrono::duration<double>(total_end - total_start).count();
 
-    std::cout << "\nDone. Processed " << frame_count << " frames in " << total_sec << "s";
+    LOG_INFO_FMT("[Main] Done. Processed {} frames in {}s", frame_count, total_sec);
     if (total_sec > 0) {
-        std::cout << " (" << (frame_count / total_sec) << " FPS)";
+        LOG_INFO_FMT("[Main] FPS: {}", frame_count / total_sec);
     }
     std::cout << std::endl;
 
@@ -87,16 +87,16 @@ static int runAsync(const nlohmann::json& config, size_t queue_size) {
     auto async_pipeline = std::make_shared<lidar_core::core::AsyncPipeline>(pipeline_id, queue_size);
 
     if (!async_pipeline->buildFromJson(config)) {
-        std::cerr << "Error: Failed to build async pipeline" << std::endl;
+        LOG_ERROR_FMT("[Main] Failed to build async pipeline");
         return 1;
     }
 
     if (!async_pipeline->start()) {
-        std::cerr << "Error: Failed to start async pipeline" << std::endl;
+        LOG_ERROR_FMT("[Main] Failed to start async pipeline");
         return 1;
     }
 
-    std::cout << "Pipeline ready (async mode, queue=" << queue_size << "). Processing..." << std::endl;
+    LOG_INFO_FMT("[Main] Pipeline ready (async mode, queue={}). Processing...", queue_size);
 
     // 等待处理完成
     while (g_running && async_pipeline->isRunning()) {
@@ -108,11 +108,10 @@ static int runAsync(const nlohmann::json& config, size_t queue_size) {
     uint64_t frames = async_pipeline->getProcessedFrames();
     double fps = async_pipeline->getFPS();
 
-    std::cout << "\nDone. Processed " << frames << " frames";
+    LOG_INFO_FMT("[Main] Done. Processed {} frames", frames);
     if (fps > 0) {
-        std::cout << " (" << fps << " FPS)";
+        LOG_INFO_FMT("[Main] FPS: {}", fps);
     }
-    std::cout << std::endl;
 
     return 0;
 }
