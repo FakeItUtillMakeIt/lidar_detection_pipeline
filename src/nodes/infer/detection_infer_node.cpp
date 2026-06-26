@@ -1,4 +1,5 @@
 // src/nodes/infer/detection_infer_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "detection_infer_node.h"
 #include "node_factory.h"
 #include <iostream>
@@ -29,11 +30,11 @@ bool DetectionInferNode::loadModel(const std::string& model_path) {
     // 创建引擎
     engine_ = std::make_shared<pipeline::PointPillarsEngine>(config);
     if (!engine_->init()) {
-        std::cerr << "[DetectionInferNode] Failed to init engine" << std::endl;
+        LOG_ERROR_FMT("[DetectionInferNode] Failed to init engine");
         return false;
     }
 
-    std::cout << "[DetectionInferNode] Model loaded: " << model_path << std::endl;
+    LOG_INFO_FMT("[DetectionInferNode] Model loaded: {}", model_path);
     return true;
 }
 
@@ -54,12 +55,12 @@ bool DetectionInferNode::start() {
         return true;
 
     if (!engine_) {
-        std::cerr << "[DetectionInferNode] Engine not initialized" << std::endl;
+        LOG_ERROR_FMT("[DetectionInferNode] Engine not initialized");
         return false;
     }
 
     running_ = true;
-    std::cout << "[DetectionInferNode] Started" << std::endl;
+    LOG_INFO_FMT("[DetectionInferNode] Started");
     return true;
 }
 
@@ -71,13 +72,13 @@ void DetectionInferNode::stop() {
     if (engine_) {
         engine_->shutdown();
     }
-    std::cout << "[DetectionInferNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[DetectionInferNode] Stopped");
 }
 
 void DetectionInferNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     auto cloud_packet = std::dynamic_pointer_cast<core::PointCloudPacket>(packet);
     if (!cloud_packet) {
-        std::cerr << "[DetectionInferNode] Invalid packet type" << std::endl;
+        LOG_ERROR_FMT("[DetectionInferNode] Invalid packet type");
         return;
     }
 

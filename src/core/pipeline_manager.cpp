@@ -1,4 +1,5 @@
 // src/core/pipeline_manager.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "lidar_core/core/pipeline.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -24,7 +25,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
     try {
         // 1. 解析节点配置并创建实例
         if (!config.contains("nodes") || !config["nodes"].is_array()) {
-            std::cerr << "[Pipeline " << id_ << "] Invalid config: missing 'nodes' array" << std::endl;
+            LOG_ERROR_FMT("[Pipeline {}] Invalid config: missing 'nodes' array", id_);
             return false;
         }
 
@@ -33,16 +34,16 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
             std::string type = node_cfg.value("type", "");
             nlohmann::json params = node_cfg.value("params", nlohmann::json::object());
 
-            std::cout << "[Pipeline " << id_ << "] Node: id:" << id << ", type:" << type << std::endl;
+            LOG_INFO_FMT("[Pipeline {}] Node: id:{}, type:{}", id_, id, type);
 
             if (id.empty() || type.empty()) {
-                std::cerr << "[Pipeline " << id_ << "] Node missing 'id' or 'type'" << std::endl;
+                LOG_ERROR_FMT("[Pipeline {}] Node missing 'id' or 'type'", id_);
                 return false;
             }
 
             auto node = NodeFactory::instance().create(type, params);
             if (!node) {
-                std::cerr << "[Pipeline " << id_ << "] Failed to create node type: " << type << std::endl;
+                LOG_ERROR_FMT("[Pipeline {}] Failed to create node type: {}", id_, type);
                 return false;
             }
 
@@ -64,7 +65,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                         params.value("nms_thresh", 0.01f)
                     );
                     if (!infer_node->loadModel(infer_node->getModelPath())) {
-                        std::cerr << "[Pipeline " << id_ << "] Failed to load model" << std::endl;
+                        LOG_ERROR_FMT("[Pipeline {}] Failed to load model", id_);
                         return false;
                     }
                 }
@@ -111,7 +112,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
             }
 
             nodes_[id] = node;
-            std::cout << "[Pipeline " << id_ << "] Created node: " << id << " (type: " << type << ")" << std::endl;
+            LOG_INFO_FMT("[Pipeline {}] Created node: {}, type: {}", id_, id, type);
         }
 
         // 2. 建立边连接
@@ -123,12 +124,12 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                 auto it_from = nodes_.find(from);
                 auto it_to = nodes_.find(to);
                 if (it_from == nodes_.end() || it_to == nodes_.end()) {
-                    std::cerr << "[Pipeline " << id_ << "] Invalid edge: " << from << " -> " << to << std::endl;
+                    LOG_ERROR_FMT("[Pipeline {}] Invalid edge: {} -> {}", id_, from, to);
                     return false;
                 }
 
                 it_from->second->addDownstream(it_to->second);
-                std::cout << "[Pipeline " << id_ << "] Connected: " << from << " -> " << to << std::endl;
+                LOG_INFO_FMT("[Pipeline {}] Connected: {} -> {}", id_, from, to);
             }
         }
 
@@ -140,7 +141,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
 
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "[Pipeline " << id_ << "] Exception during build: " << e.what() << std::endl;
+        LOG_ERROR_FMT("[Pipeline {}] Exception during build: {}", id_, e.what());
         return false;
     }
 }
@@ -151,9 +152,9 @@ bool Pipeline::start() {
 
     bool all_started = true;
     for (auto& [name, node] : nodes_) {
-        std::cout << "[Pipeline " << id_ << "] Starting node: " << name << std::endl;
+        LOG_INFO_FMT("[Pipeline {}] Starting node: {}", id_, name);
         if (!node->start()) {
-            std::cerr << "[Pipeline " << id_ << "] Failed to start node: " << name << std::endl;
+            LOG_ERROR_FMT("[Pipeline {}] Failed to start node: {}", id_, name);
             all_started = false;
             break;
         }
@@ -161,7 +162,7 @@ bool Pipeline::start() {
 
     if (all_started) {
         running_ = true;
-        std::cout << "[Pipeline " << id_ << "] All nodes started successfully" << std::endl;
+        LOG_INFO_FMT("[Pipeline {}] All nodes started successfully", id_);
     } else {
         stop();
     }
@@ -174,10 +175,10 @@ void Pipeline::stop() {
     running_ = false;
 
     for (auto& [name, node] : nodes_) {
-        std::cout << "[Pipeline " << id_ << "] Stopping node: " << name << std::endl;
+        LOG_INFO_FMT("[Pipeline {}] Stopping node: {}", id_, name);
         node->stop();
     }
-    std::cout << "[Pipeline " << id_ << "] Pipeline stopped" << std::endl;
+    LOG_INFO_FMT("[Pipeline {}] Pipeline stopped", id_);
 }
 
 std::shared_ptr<Node> Pipeline::getNode(const std::string& name) {

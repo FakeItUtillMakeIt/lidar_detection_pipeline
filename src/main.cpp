@@ -13,6 +13,8 @@
 #include "lidar_core/nodes/i_output_node.h"
 #include "nodes/source/bin_source_node.h"
 
+#include "3rd_party/log_mgr/log_mgr.h"
+
 static volatile bool g_running = true;
 
 static void signalHandler(int) { g_running = false; }
@@ -118,6 +120,24 @@ static int runAsync(const nlohmann::json& config, size_t queue_size) {
 int main(int argc, char** argv) {
     signal(SIGINT, signalHandler);
 
+    // 设置日志
+    LogManager::Config log_config;
+    log_config.log_dir = "./logs";
+    log_config.log_name = "lidar_detection_pipeline";
+    log_config.level = LogManager::Level::S_INFO;
+    log_config.max_file_size = 5 * 1024 * 1024; // 5MB
+    log_config.max_files = 5;
+    log_config.console_output = true;
+    log_config.async_mode = false;
+    log_config.queue_size = 16384;
+    log_config.flush_interval = 2;
+
+    if (!LogManager::get_instance().initialize(log_config))
+    {
+        std::cerr << "Failed to initialize logger!" << std::endl;
+        return -1;
+    }
+
     std::string config_path = "../config/pipeline.json";
     bool async_mode = false;
     size_t queue_size = 3;
@@ -139,7 +159,7 @@ int main(int argc, char** argv) {
     // Read config file
     std::ifstream config_file(config_path);
     if (!config_file.is_open()) {
-        std::cerr << "Error: Cannot open config file: " << config_path << std::endl;
+        LOG_ERROR_FMT("[Main] Cannot open config file: {}", config_path);
         return 1;
     }
 
@@ -147,12 +167,12 @@ int main(int argc, char** argv) {
     try {
         config_file >> config;
     } catch (const std::exception& e) {
-        std::cerr << "Error: Invalid JSON config: " << e.what() << std::endl;
+        LOG_ERROR_FMT("[Main] Invalid JSON config: {}", e.what());
         return 1;
     }
 
     if (!config.contains("pipeline") || !config["pipeline"].contains("id")) {
-        std::cerr << "Error: Missing 'pipeline.id' in config" << std::endl;
+        LOG_ERROR_FMT("[Main] Missing 'pipeline.id' in config");
         return 1;
     }
 

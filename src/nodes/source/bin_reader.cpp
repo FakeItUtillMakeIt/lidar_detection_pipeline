@@ -1,3 +1,4 @@
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "bin_reader.hpp"
 #include <algorithm>
 #include <dirent.h>
@@ -21,7 +22,7 @@ bool BinFileReader::open() {
             is_open_ = true;
             return true;
         }
-        std::cerr << "Cannot open: " << config_.input_path << std::endl;
+        LOG_ERROR_FMT("Cannot open: {}", config_.input_path);
         return false;
     }
 

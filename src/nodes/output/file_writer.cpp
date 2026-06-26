@@ -1,3 +1,4 @@
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "file_writer.hpp"
 #include <sys/stat.h>
 #include <fstream>
@@ -19,7 +20,7 @@ void FileWriter::write(const std::vector<Detection>& dets, uint64_t frame_id) {
 
     std::ofstream ofs(oss.str());
     if (!ofs.is_open()) {
-        std::cerr << "Cannot open output file: " << oss.str() << std::endl;
+        LOG_ERROR_FMT("Cannot open output file: {}", oss.str());
         return;
     }
 

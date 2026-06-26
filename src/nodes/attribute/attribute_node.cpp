@@ -1,4 +1,5 @@
 // src/nodes/attribute/attribute_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "attribute_node.h"
 #include "node_factory.h"
 #include <cmath>
@@ -27,7 +28,7 @@ bool AttributeNode::start() {
         return true;
 
     running_ = true;
-    std::cout << "[AttributeNode] Started, dt=" << dt_ << "s" << std::endl;
+    LOG_INFO_FMT("[AttributeNode] Started, dt={}", dt_);
     return true;
 }
 
@@ -36,13 +37,13 @@ void AttributeNode::stop() {
         return;
     running_ = false;
     history_.clear();
-    std::cout << "[AttributeNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[AttributeNode] Stopped");
 }
 
 void AttributeNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     auto det_packet = std::dynamic_pointer_cast<core::DetectionPacket>(packet);
     if (!det_packet) {
-        std::cerr << "[AttributeNode] Invalid packet type" << std::endl;
+        LOG_ERROR_FMT("[AttributeNode] Invalid packet type");
         return;
     }
 

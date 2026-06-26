@@ -56,6 +56,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+find_package(spdlog REQUIRED)
+
 # ------------------------------------------------------------------------------
 # 3. 依赖管理
 # ------------------------------------------------------------------------------
@@ -79,6 +81,7 @@ add_library(lidar_core SHARED
     src/core/pipeline_manager.cpp
     src/core/async_pipeline.cpp
     src/nodes/registry/node_factory.cpp
+    ${PROJECT_SOURCE_DIR}/3rd_party/log_mgr/log_mgr.cpp
 )
 
 set_target_properties(lidar_core PROPERTIES
@@ -165,6 +168,7 @@ add_library(lidar_nodes SHARED
     ${OUTPUT_NODE_SOURCES}
     ${TRACK_NODE_SOURCES}
     ${ATTRIBUTE_NODE_SOURCES}
+    ${PROJECT_SOURCE_DIR}/3rd_party/log_mgr/log_mgr.cpp
 )
 
 target_include_directories(lidar_nodes
@@ -182,6 +186,7 @@ target_include_directories(lidar_nodes
 
 target_link_libraries(lidar_nodes
     PUBLIC
+        spdlog::spdlog
         lidar_core
     PRIVATE
         libnvinfer.so
@@ -201,7 +206,8 @@ endif()
 # ------------------------------------------------------------------------------
 # 6. 主程序构建
 # ------------------------------------------------------------------------------
-add_executable(lidar_app src/main.cpp)
+add_executable(lidar_app src/main.cpp 
+    ${PROJECT_SOURCE_DIR}/3rd_party/log_mgr/log_mgr.cpp)
 
 target_link_libraries(lidar_app
     PRIVATE

@@ -1,4 +1,5 @@
 // src/nodes/output/file_output_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "file_output_node.h"
 #include "node_factory.h"
 #include <iostream>
@@ -44,12 +45,12 @@ bool FileOutputNode::start() {
     // 创建输出
     output_ = pipeline::createOutput(config);
     if (!output_) {
-        std::cerr << "[FileOutputNode] Failed to create output" << std::endl;
+        LOG_ERROR_FMT("[FileOutputNode] Failed to create output");
         return false;
     }
 
     running_ = true;
-    std::cout << "[FileOutputNode] Started, output dir: " << output_dir_ << std::endl;
+    LOG_INFO_FMT("[FileOutputNode] Started, output dir: {}", output_dir_);
     return true;
 }
 
@@ -58,18 +59,18 @@ void FileOutputNode::stop() {
         return;
     running_ = false;
     close();
-    std::cout << "[FileOutputNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[FileOutputNode] Stopped");
 }
 
 void FileOutputNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     auto det_packet = std::dynamic_pointer_cast<core::DetectionPacket>(packet);
     if (!det_packet) {
-        std::cerr << "[FileOutputNode] Invalid packet type" << std::endl;
+        LOG_ERROR_FMT("[FileOutputNode] Invalid packet type");
         return;
     }
 
     if (!output_) {
-        std::cerr << "[FileOutputNode] Output not initialized" << std::endl;
+        LOG_ERROR_FMT("[FileOutputNode] Output not initialized");
         return;
     }
 

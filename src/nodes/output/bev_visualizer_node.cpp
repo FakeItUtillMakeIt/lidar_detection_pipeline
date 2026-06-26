@@ -1,4 +1,5 @@
 // src/nodes/output/bev_visualizer_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "bev_visualizer_node.h"
 #include "node_factory.h"
 #include <iostream>
@@ -51,12 +52,12 @@ bool BEVVisualizerNode::start() {
         cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE);
     }
 #else
-    std::cerr << "[BEVVisualizerNode] OpenCV not available" << std::endl;
+    LOG_ERROR_FMT("[BEVVisualizerNode] OpenCV not available");
     return false;
 #endif
 
     running_ = true;
-    std::cout << "[BEVVisualizerNode] Started, output: " << output_dir_ << std::endl;
+    LOG_INFO_FMT("[BEVVisualizerNode] Started, output: {}", output_dir_);
     return true;
 }
 
@@ -65,13 +66,13 @@ void BEVVisualizerNode::stop() {
         return;
     running_ = false;
     close();
-    std::cout << "[BEVVisualizerNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[BEVVisualizerNode] Stopped");
 }
 
 void BEVVisualizerNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     auto det_packet = std::dynamic_pointer_cast<core::DetectionPacket>(packet);
     if (!det_packet) {
-        std::cerr << "[BEVVisualizerNode] Invalid packet type" << std::endl;
+        LOG_ERROR_FMT("[BEVVisualizerNode] Invalid packet type");
         return;
     }
 

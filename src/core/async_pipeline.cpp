@@ -1,4 +1,5 @@
 // src/core/async_pipeline.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "lidar_core/core/async_pipeline.h"
 #include "lidar_core/nodes/i_source_node.h"
 #include "lidar_core/nodes/i_infer_node.h"
@@ -35,7 +36,7 @@ bool AsyncPipeline::start() {
     reader_thread_ = std::thread(&AsyncPipeline::readerLoop, this);
     infer_thread_ = std::thread(&AsyncPipeline::inferLoop, this);
 
-    std::cout << "[AsyncPipeline " << id_ << "] Started with queue_size=" << queue_size_ << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Started with queue_size={}", id_, queue_size_);
     return true;
 }
 
@@ -49,7 +50,7 @@ void AsyncPipeline::stop() {
     if (infer_thread_.joinable()) infer_thread_.join();
 
     pipeline_->stop();
-    std::cout << "[AsyncPipeline " << id_ << "] Stopped" << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Stopped", id_);
 }
 
 bool AsyncPipeline::isRunning() const {
@@ -68,12 +69,12 @@ void AsyncPipeline::readerLoop() {
     auto bin_source = std::dynamic_pointer_cast<nodes::BinSourceNode>(source_node);
 
     if (!bin_source) {
-        std::cerr << "[AsyncPipeline] source node not found or wrong type" << std::endl;
+        LOG_ERROR_FMT("[AsyncPipeline {}] source node not found or wrong type", id_);
         running_ = false;
         return;
     }
 
-    std::cout << "[AsyncPipeline] Reader thread started" << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Reader thread started", id_);
 
     while (running_) {
         auto cloud = std::make_shared<PointCloudPacket>();
@@ -89,7 +90,7 @@ void AsyncPipeline::readerLoop() {
 
     // 通知推理线程没有更多数据
     input_queue_.stop();
-    std::cout << "[AsyncPipeline] Reader thread finished" << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Reader thread finished", id_);
 }
 
 void AsyncPipeline::inferLoop() {
@@ -97,12 +98,12 @@ void AsyncPipeline::inferLoop() {
         pipeline_->getNode("infer"));
 
     if (!infer_node) {
-        std::cerr << "[AsyncPipeline] infer node not found" << std::endl;
+        LOG_ERROR_FMT("[AsyncPipeline {}] infer node not found", id_);
         running_ = false;
         return;
     }
 
-    std::cout << "[AsyncPipeline] Infer thread started" << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Infer thread started", id_);
 
     while (running_) {
         auto cloud = input_queue_.pop();
@@ -115,7 +116,7 @@ void AsyncPipeline::inferLoop() {
     }
 
     infer_finished_ = true;
-    std::cout << "[AsyncPipeline] Infer thread finished" << std::endl;
+    LOG_INFO_FMT("[AsyncPipeline {}] Infer thread finished", id_);
 }
 
 } // namespace core

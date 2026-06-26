@@ -1,4 +1,5 @@
 // src/nodes/source/bin_source_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "bin_source_node.h"
 #include "node_factory.h"
 #include <iostream>
@@ -42,12 +43,12 @@ bool BinSourceNode::start() {
     // 创建读取器
     reader_ = pipeline::createReader(config);
     if (!reader_ || !reader_->open()) {
-        std::cerr << "[BinSourceNode] Failed to open input: " << input_path_ << std::endl;
+        LOG_ERROR_FMT("[BinSourceNode] Failed to open input: {}", input_path_);
         return false;
     }
 
     running_ = true;
-    std::cout << "[BinSourceNode] Started, input: " << input_path_ << std::endl;
+    LOG_INFO_FMT("[BinSourceNode] Started, input: {}", input_path_);
     return true;
 }
 
@@ -59,7 +60,7 @@ void BinSourceNode::stop() {
     if (reader_) {
         reader_->close();
     }
-    std::cout << "[BinSourceNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[BinSourceNode] Stopped");
 }
 
 void BinSourceNode::pushData(std::shared_ptr<core::BasePacket> packet) {

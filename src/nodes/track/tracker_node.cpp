@@ -1,4 +1,5 @@
 // src/nodes/track/tracker_node.cpp
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "tracker_node.h"
 #include "node_factory.h"
 #include <iostream>
@@ -47,18 +48,17 @@ bool TrackerNode::start() {
                 ocsort_config_.delta_t,
                 ocsort_config_.inertia,
                 ocsort_config_.use_byte)) {
-            std::cerr << "[TrackerNode] Failed to init OCSort adapter" << std::endl;
+            LOG_ERROR_FMT("[TrackerNode] Failed to init OCSort adapter");
             return false;
         }
     } else {
-        std::cerr << "[TrackerNode] Unsupported tracker type" << std::endl;
+        LOG_ERROR_FMT("[TrackerNode] Unsupported tracker type");
         return false;
     }
 
     running_ = true;
-    std::cout << "[TrackerNode] Started with " 
-              << (tracker_type_ == TrackerType::OCSORT ? "OCSort" : "Unknown")
-              << " tracker" << std::endl;
+    
+    LOG_INFO_FMT("[TrackerNode] Started with {}", (tracker_type_ == TrackerType::OCSORT ? "OCSort" : "Unknown"));   
     return true;
 }
 
@@ -70,18 +70,18 @@ void TrackerNode::stop() {
     if (adapter_) {
         adapter_->reset();
     }
-    std::cout << "[TrackerNode] Stopped" << std::endl;
+    LOG_INFO_FMT("[TrackerNode] Stopped");
 }
 
 void TrackerNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     auto det_packet = std::dynamic_pointer_cast<core::DetectionPacket>(packet);
     if (!det_packet) {
-        std::cerr << "[TrackerNode] Invalid packet type" << std::endl;
+        LOG_ERROR_FMT("[TrackerNode] Invalid packet type");
         return;
     }
 
     if (!adapter_) {
-        std::cerr << "[TrackerNode] Adapter not initialized" << std::endl;
+        LOG_ERROR_FMT("[TrackerNode] Adapter not initialized");
         return;
     }
 

@@ -1,3 +1,4 @@
+#include "3rd_party/log_mgr/log_mgr.h"
 #include "engine.hpp"
 #include <iostream>
 #include <cstring>
@@ -22,7 +23,7 @@ bool PointPillarsEngine::init() {
 
     detector_ = pointpillar::lidar::Detector::create(det_config);
     if (!detector_) {
-        std::cerr << "Failed to create detector" << std::endl;
+        LOG_ERROR_FMT("[PointPillarsEngine] Failed to create detector");
         return false;
     }
 
@@ -34,7 +35,7 @@ bool PointPillarsEngine::init() {
         for (int i = 0; i < config_.num_workers; i++) {
             workers_.emplace_back(&PointPillarsEngine::workerLoop, this);
         }
-        std::cout << "Async engine started with " << config_.num_workers << " workers" << std::endl;
+        LOG_INFO_FMT("[PointPillarsEngine] Async engine started with {} workers", config_.num_workers);
     }
 
     return true;
@@ -46,6 +47,7 @@ std::vector<Detection> PointPillarsEngine::detect(const PointCloud& cloud) {
         static_cast<int>(cloud.points.size()),
         stream_
     );
+    LOG_INFO_FMT("[PointPillarsEngine] Frame {}: Detected {} objects", cloud.frame_id, bboxes.size());
     return toDetections(bboxes, cloud.frame_id);
 }
 
@@ -85,7 +87,7 @@ void PointPillarsEngine::workerLoop() {
             stream_
         );
         auto detections = toDetections(bboxes, task.cloud.frame_id);
-
+        LOG_INFO_FMT("[PointPillarsEngine] Frame {}: Detected {} objects", task.cloud.frame_id, detections.size());
         // Callback
         if (task.callback) {
             task.callback(detections, task.cloud.frame_id);
