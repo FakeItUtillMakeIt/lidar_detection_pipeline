@@ -21,16 +21,24 @@
             }
         },
         {
-            "id": "output",
+            "id": "file_output",
             "type": "file_output",
             "params": {
                 "output_dir": "./out",
                 "output_type": "file"
             }
+        },
+        {
+            "id": "bev_vis",
+            "type": "bev_visualizer",
+            "params": {
+                "output_dir": "./out/bev"
+            }
         }
     ],
     "edges": [
         {"from": "source", "to": "infer"},
-        {"from": "infer", "to": "output"}
+        {"from": "infer", "to": "file_output"},
+        {"from": "infer", "to": "bev_vis"}
     ]
 }

@@ -41,6 +41,7 @@ public:
 class DetectionPacket : public BasePacket {
 public:
     std::vector<Detection> detections;
+    std::vector<PointXYZI> cloud_points;  // 携带点云用于BEV可视化
 };
 
 } // namespace core

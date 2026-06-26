@@ -68,7 +68,7 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                 }
             }
 
-            if (type.find("output") != std::string::npos) {
+            if (type.find("output") != std::string::npos || type.find("visualizer") != std::string::npos) {
                 auto output_node = std::dynamic_pointer_cast<nodes::IOutputNode>(node);
                 if (output_node) {
                     output_node->setOutputDir(params.value("output_dir", "../out"));

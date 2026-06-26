@@ -18,6 +18,11 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options a
 option(WITH_ROS2 "Build with ROS2 support" OFF)
 option(WITH_OPENCV "Build with OpenCV BEV visualization" ON)
 
+# OpenCV
+if(WITH_OPENCV)
+    find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+endif()
+
 # ------------------------------------------------------------------------------
 # 2. 全局编译设置
 # ------------------------------------------------------------------------------
@@ -114,6 +119,7 @@ set(OUTPUT_NODE_SOURCES
     src/nodes/output/output.cpp
     src/nodes/output/file_writer.cpp
     src/nodes/output/file_output_node.cpp
+    src/nodes/output/bev_visualizer_node.cpp
 )
 
 # 注册
@@ -145,6 +151,11 @@ target_link_libraries(lidar_nodes
         libnvinfer.so
         libnvinfer_plugin.so
 )
+
+if(WITH_OPENCV)
+    target_link_libraries(lidar_nodes PRIVATE ${OpenCV_LIBS})
+    target_compile_definitions(lidar_nodes PRIVATE WITH_OPENCV)
+endif()
 
 # ------------------------------------------------------------------------------
 # 6. 主程序构建

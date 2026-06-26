@@ -76,15 +76,13 @@ int main(int argc, char** argv) {
 
     std::cout << "Pipeline ready. Processing..." << std::endl;
 
-    // Get source, infer, and output nodes
+    // Get source and infer nodes
     auto source_node = std::dynamic_pointer_cast<lidar_core::nodes::ISourceNode>(
         pipeline->getNode("source"));
     auto infer_node = std::dynamic_pointer_cast<lidar_core::nodes::IInferNode>(
         pipeline->getNode("infer"));
-    auto output_node = std::dynamic_pointer_cast<lidar_core::nodes::IOutputNode>(
-        pipeline->getNode("output"));
 
-    if (!source_node || !infer_node || !output_node) {
+    if (!source_node || !infer_node) {
         std::cerr << "Error: Missing required nodes" << std::endl;
         pipeline->stop();
         return 1;

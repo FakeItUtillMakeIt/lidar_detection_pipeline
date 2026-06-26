@@ -104,6 +104,7 @@ void DetectionInferNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     det_packet->frame_id = cloud_packet->frame_id;
     det_packet->timestamp_ns = cloud_packet->timestamp_ns;
     det_packet->detections.reserve(detections.size());
+    det_packet->cloud_points = cloud_packet->points;  // 携带点云
     
     for (const auto& det : detections) {
         core::Detection detection;
