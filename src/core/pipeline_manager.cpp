@@ -10,6 +10,8 @@
 #include "lidar_core/nodes/i_source_node.h"
 #include "lidar_core/nodes/i_infer_node.h"
 #include "lidar_core/nodes/i_output_node.h"
+#include "lidar_core/nodes/i_tracker_node.h"
+#include "lidar_core/nodes/i_attribute_node.h"
 
 namespace lidar_core {
 namespace core {
@@ -73,6 +75,38 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                 if (output_node) {
                     output_node->setOutputDir(params.value("output_dir", "../out"));
                     output_node->setOutputType(params.value("output_type", "file"));
+                }
+            }
+
+            if (type.find("tracker") != std::string::npos) {
+                auto tracker_node = std::dynamic_pointer_cast<nodes::ITrackerNode>(node);
+                if (tracker_node) {
+                    // 设置跟踪器类型
+                    std::string tracker_type = params.value("tracker_type", "ocsort");
+                    if (tracker_type == "ocsort") {
+                        tracker_node->setTrackerType(nodes::TrackerType::OCSORT);
+                    }
+
+                    // 设置OCSort配置
+                    nodes::OCSortConfig ocsort_config;
+                    if (params.contains("ocsort_config")) {
+                        auto& cfg = params["ocsort_config"];
+                        ocsort_config.det_thresh = cfg.value("det_thresh", 0.3f);
+                        ocsort_config.max_age = cfg.value("max_age", 30);
+                        ocsort_config.min_hits = cfg.value("min_hits", 3);
+                        ocsort_config.iou_threshold = cfg.value("iou_threshold", 0.3f);
+                        ocsort_config.delta_t = cfg.value("delta_t", 3);
+                        ocsort_config.inertia = cfg.value("inertia", 0.2f);
+                        ocsort_config.use_byte = cfg.value("use_byte", false);
+                    }
+                    tracker_node->setOCSortConfig(ocsort_config);
+                }
+            }
+
+            if (type.find("attribute") != std::string::npos) {
+                auto attr_node = std::dynamic_pointer_cast<nodes::IAttributeNode>(node);
+                if (attr_node) {
+                    attr_node->setTimeInterval(params.value("dt", 0.1f));
                 }
             }
 

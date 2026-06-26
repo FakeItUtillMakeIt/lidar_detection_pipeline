@@ -17,10 +17,16 @@ project(lidar_detection_pipeline
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release MinSizeRel RelWithDebInfo.")
 option(WITH_ROS2 "Build with ROS2 support" OFF)
 option(WITH_OPENCV "Build with OpenCV BEV visualization" ON)
+option(WITH_TRACK "Build with tracking support" ON)
 
 # OpenCV
 if(WITH_OPENCV)
     find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+endif()
+
+# Eigen (用于跟踪)
+if(WITH_TRACK)
+    find_package(Eigen3 REQUIRED)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -122,16 +128,30 @@ set(OUTPUT_NODE_SOURCES
     src/nodes/output/bev_visualizer_node.cpp
 )
 
-# 注册
-set(REGISTRY_SOURCES
+# 跟踪节点
+set(TRACK_NODE_SOURCES
     src/nodes/registry/node_registry.cpp
 )
+
+if(WITH_TRACK)
+    list(APPEND TRACK_NODE_SOURCES
+        src/nodes/track/ocsort_adapter.cpp
+        src/nodes/track/tracker_node.cpp
+        src/nodes/track/attribute_node.cpp
+        3rd_party/tracker/OCSort/OCSort.cpp
+        3rd_party/tracker/OCSort/KalmanBoxTracker.cpp
+        3rd_party/tracker/OCSort/KalmanFilter.cpp
+        3rd_party/tracker/OCSort/Association.cpp
+        3rd_party/tracker/OCSort/Utilities.cpp
+        3rd_party/tracker/OCSort/lapjv.cpp
+    )
+endif()
 
 add_library(lidar_nodes SHARED
     ${SOURCE_NODE_SOURCES}
     ${INFER_NODE_SOURCES}
     ${OUTPUT_NODE_SOURCES}
-    ${REGISTRY_SOURCES}
+    ${TRACK_NODE_SOURCES}
 )
 
 target_include_directories(lidar_nodes
@@ -142,6 +162,8 @@ target_include_directories(lidar_nodes
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/common
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/track
+        ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/tracker/OCSort
 )
 
 target_link_libraries(lidar_nodes
@@ -155,6 +177,11 @@ target_link_libraries(lidar_nodes
 if(WITH_OPENCV)
     target_link_libraries(lidar_nodes PRIVATE ${OpenCV_LIBS})
     target_compile_definitions(lidar_nodes PRIVATE WITH_OPENCV)
+endif()
+
+if(WITH_TRACK)
+    target_compile_definitions(lidar_nodes PRIVATE WITH_TRACK)
+    target_link_libraries(lidar_nodes PRIVATE Eigen3::Eigen)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -187,5 +214,6 @@ message(STATUS "  CUDA Compiler:        ${CMAKE_CUDA_COMPILER}")
 message(STATUS "  CUDA Architectures:   ${CMAKE_CUDA_ARCHITECTURES}")
 message(STATUS "  ROS2 support:         ${WITH_ROS2}")
 message(STATUS "  OpenCV support:       ${WITH_OPENCV}")
+message(STATUS "  Tracking support:     ${WITH_TRACK}")
 message(STATUS "  Install prefix:       ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "=====================================================")

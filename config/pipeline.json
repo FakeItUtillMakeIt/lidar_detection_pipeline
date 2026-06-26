@@ -21,6 +21,29 @@
             }
         },
         {
+            "id": "tracker",
+            "type": "tracker",
+            "params": {
+                "tracker_type": "ocsort",
+                "ocsort_config": {
+                    "det_thresh": 0.3,
+                    "max_age": 30,
+                    "min_hits": 3,
+                    "iou_threshold": 0.3,
+                    "delta_t": 3,
+                    "inertia": 0.2,
+                    "use_byte": false
+                }
+            }
+        },
+        {
+            "id": "attribute",
+            "type": "attribute",
+            "params": {
+                "dt": 0.1
+            }
+        },
+        {
             "id": "file_output",
             "type": "file_output",
             "params": {
@@ -38,6 +61,8 @@
     ],
     "edges": [
         {"from": "source", "to": "infer"},
+        {"from": "infer", "to": "tracker"},
+        {"from": "tracker", "to": "attribute"},
         {"from": "infer", "to": "file_output"},
         {"from": "infer", "to": "bev_vis"}
     ]

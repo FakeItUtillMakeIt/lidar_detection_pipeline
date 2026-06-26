@@ -21,6 +21,17 @@ struct Detection {
     int class_id;        // 0=Car, 1=Pedestrian, 2=Cyclist
     float score;
     uint64_t frame_id = 0;
+
+    // 跟踪字段
+    int track_id = -1;       // 跟踪ID (-1=未跟踪)
+    int track_age = 0;       // 跟踪生命周期(帧数)
+    bool track_active = false; // 跟踪是否活跃
+
+    // 运动属性
+    float vx = 0;            // x方向速度 (m/s)
+    float vy = 0;            // y方向速度 (m/s)
+    float speed = 0;         // 速度大小 (m/s)
+    float heading = 0;       // 航向角 (rad)
 };
 
 // 数据包基类

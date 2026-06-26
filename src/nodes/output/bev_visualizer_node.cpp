@@ -43,6 +43,7 @@ bool BEVVisualizerNode::start() {
 #ifdef WITH_OPENCV
     // 创建输出目录
     if (!output_dir_.empty()) {
+        mkdir("./out", 0755);  // 确保父目录存在
         mkdir(output_dir_.c_str(), 0755);
     }
 
@@ -149,12 +150,19 @@ void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const 
 
     cv::polylines(img, pts, true, color, 2, cv::LINE_AA);
 
-    // 标签
+    // 标签 (类别 + track_id + 速度)
     const char* labels[] = {"Car", "Ped", "Cyc"};
     const char* label = (det.class_id >= 0 && det.class_id < 3) ? labels[det.class_id] : "?";
     int px = static_cast<int>((det.x - origin_x_) * scale_);
     int py = static_cast<int>((det.y - origin_y_) * scale_) - 5;
-    cv::putText(img, label, cv::Point(px, py), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
+    
+    char text[64];
+    if (det.track_id >= 0) {
+        snprintf(text, sizeof(text), "%s#%d %.1fm/s", label, det.track_id, det.speed);
+    } else {
+        snprintf(text, sizeof(text), "%s", label);
+    }
+    cv::putText(img, text, cv::Point(px, py), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
 }
 
 #endif  // WITH_OPENCV
