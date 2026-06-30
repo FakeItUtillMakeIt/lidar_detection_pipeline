@@ -26,6 +26,10 @@ PlannerType PotentialFieldPlanner::getPlannerType() const {
 
 void PotentialFieldPlanner::setPlannerConfig(const core::PlanningConfig& config) {
     config_ = config;
+    // 从config更新势场参数
+    pf_params_.attractive_gain = config.attractive_gain;
+    pf_params_.repulsive_gain = config.repulsive_gain;
+    pf_params_.obstacle_influence_dist = config.obstacle_influence_dist;
 }
 
 const core::PlanningConfig& PotentialFieldPlanner::getPlannerConfig() const {
@@ -87,6 +91,11 @@ void PotentialFieldPlanner::pushData(std::shared_ptr<core::BasePacket> packet) {
     // 生成规划轨迹
     latest_trajectory_ = generateTrajectory(obstacles, ego_state);
 
+    LOG_INFO_FMT("[Planner] Generated trajectory: points={}, feasible={}, status={}", 
+                 latest_trajectory_.points.size(), 
+                 latest_trajectory_.is_feasible,
+                 latest_trajectory_.status);
+
     // 创建规划数据包
     auto plan_packet = std::make_shared<core::PlanningPacket>();
     plan_packet->frame_id = packet->frame_id;
@@ -127,6 +136,17 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
     float goal_x = config_.goal_x;
     float goal_y = config_.goal_y;
 
+    // 检查初始点是否在边界内
+    if (config_.enable_boundary && isOutsideBoundary(current_x, current_y)) {
+        trajectory.is_feasible = false;
+        trajectory.status = "Start point outside boundary";
+        LOG_WARN_FMT("[Planner] Start point ({}, {}) outside boundary", current_x, current_y);
+        return trajectory;
+    }
+
+    LOG_INFO_FMT("[Planner] Generating trajectory: start=({},{}), goal=({},{}), boundary={}",
+                 current_x, current_y, goal_x, goal_y, config_.enable_boundary);
+
     // 梯度下降法寻找路径
     for (int i = 0; i < pf_params_.max_iterations; ++i) {
         // 计算合力
@@ -138,11 +158,19 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
         fx += afx;
         fy += afy;
 
-        // 斥力
+        // 斥力 (障碍物)
         float rfx = 0.0f, rfy = 0.0f;
         computeRepulsiveForce(rfx, rfy, current_x, current_y, obstacles);
         fx += rfx;
         fy += rfy;
+
+        // 边界斥力 (道路边界)
+        if (config_.enable_boundary) {
+            float bfx = 0.0f, bfy = 0.0f;
+            computeBoundaryForce(bfx, bfy, current_x, current_y);
+            fx += bfx;
+            fy += bfy;
+        }
 
         // 检查是否到达目标点
         float dist_to_goal = distanceBetweenPoints(current_x, current_y, goal_x, goal_y);
@@ -159,9 +187,23 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
             break;
         }
 
+        // 检查是否超出边界
+        if (config_.enable_boundary && isOutsideBoundary(current_x, current_y)) {
+            LOG_WARN_FMT("[Planner] Outside boundary at ({}, {})", current_x, current_y);
+            trajectory.is_feasible = false;
+            trajectory.status = "Outside boundary";
+            break;
+        }
+
         // 梯度下降更新位置
         float force_magnitude = std::sqrt(fx * fx + fy * fy);
-        //LOG_INFO_FMT("force_magnitude:{}",force_magnitude);
+        
+        // 调试：打印力信息（每50步打印一次）
+        if (i % 50 == 0 || i < 3) {
+            LOG_INFO_FMT("[Planner] Iter {}: pos=({:.2f},{:.2f}), force=({:.2f},{:.2f}), mag={:.2f}", 
+                         i, current_x, current_y, fx, fy, force_magnitude);
+        }
+        
         if (force_magnitude < pf_params_.convergence_threshold) {
             // 判断是否已经走了足够远（接近目标）
             float progress = distanceBetweenPoints(ego_state.x, ego_state.y, current_x, current_y);
@@ -230,6 +272,9 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
                 path_points[i].x, path_points[i].y
             );
         }
+        LOG_INFO_FMT("[Planner] Trajectory: points={}, length={:.1f}m, end=({:.1f},{:.1f})", 
+                     path_points.size(), trajectory.total_length,
+                     path_points.back().x, path_points.back().y);
     }
 
     return trajectory;
@@ -283,6 +328,57 @@ void PotentialFieldPlanner::computeRepulsiveForce(
             fy += repulsive_force * dir_y;
         }
     }
+}
+
+void PotentialFieldPlanner::computeBoundaryForce(
+    float& fx, float& fy,
+    float x, float y) {
+    
+    fx = 0.0f;
+    fy = 0.0f;
+
+    // 检查x范围
+    if (x < config_.boundary_start_x || x > config_.boundary_end_x) {
+        return;  // 不在边界范围内
+    }
+
+    // 左边界斥力
+    float dist_to_left = config_.boundary_left - y;
+    if (dist_to_left > 0 && dist_to_left < config_.boundary_influence_dist) {
+        // 力的大小与距离成反比，越近力越大
+        float repulsive_force = config_.boundary_repulsive_gain * 
+            (config_.boundary_influence_dist - dist_to_left) / 
+            (dist_to_left * config_.boundary_influence_dist);
+        fy -= repulsive_force;  // 向下推（远离左边界）
+    }
+
+    // 右边界斥力
+    float dist_to_right = y - config_.boundary_right;
+    if (dist_to_right > 0 && dist_to_right < config_.boundary_influence_dist) {
+        // 力的大小与距离成反比，越近力越大
+        float repulsive_force = config_.boundary_repulsive_gain * 
+            (config_.boundary_influence_dist - dist_to_right) / 
+            (dist_to_right * config_.boundary_influence_dist);
+        fy += repulsive_force;  // 向上推（远离右边界）
+    }
+}
+
+bool PotentialFieldPlanner::isOutsideBoundary(float x, float y) {
+    // 检查x范围
+    if (x < config_.boundary_start_x || x > config_.boundary_end_x) {
+        return false;  // 不在边界范围内，不检查
+    }
+
+    // 检查y边界（包含膨胀半径）
+    float inflated_left = config_.boundary_left + config_.boundary_inflation;
+    float inflated_right = config_.boundary_right - config_.boundary_inflation;
+
+    bool outside = (y > inflated_left || y < inflated_right);
+    if (outside) {
+        LOG_WARN_FMT("[Planner] Point ({}, {}) outside boundary: left={}, right={}", 
+                     x, y, inflated_left, inflated_right);
+    }
+    return outside;
 }
 
 bool PotentialFieldPlanner::checkCollision(

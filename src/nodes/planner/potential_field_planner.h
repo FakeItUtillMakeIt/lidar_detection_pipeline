@@ -11,12 +11,12 @@ namespace nodes {
 
 // 势场参数
 struct PotentialFieldParams {
-    float attractive_gain = 0.01f;      // 引力增益
-    float repulsive_gain = 100.0f;     // 斥力增益
+    float attractive_gain = 1.0f;       // 引力增益 (增大以避免局部最小值)
+    float repulsive_gain = 10.0f;       // 斥力增益 (减小以平衡引力)
     float obstacle_influence_dist = 5.0f; // 障碍物影响距离 (m)
     float step_size = 0.5f;            // 梯度下降步长 (m)
     int max_iterations = 200;          // 最大迭代次数
-    float convergence_threshold = 2.0f; // 收敛阈值
+    float convergence_threshold = 0.1f; // 收敛阈值（降低以避免误判）
 };
 
 class PotentialFieldPlanner : public IPlannerNode {
@@ -54,6 +54,14 @@ private:
         float& fx, float& fy,
         float x, float y,
         const std::vector<core::Detection>& obstacles);
+
+    // 计算边界斥力 (道路边界排斥)
+    void computeBoundaryForce(
+        float& fx, float& fy,
+        float x, float y);
+
+    // 检查是否在边界外
+    bool isOutsideBoundary(float x, float y);
 
     // 检查碰撞
     bool checkCollision(

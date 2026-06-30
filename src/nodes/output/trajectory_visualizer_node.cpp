@@ -74,6 +74,9 @@ void TrajectoryVisualizerNode::pushData(std::shared_ptr<core::BasePacket> packet
         return;
     }
 
+    LOG_INFO_FMT("[TrajectoryVisualizerNode] Received trajectory: points={}, feasible={}", 
+                 plan_packet->trajectory.size(), plan_packet->is_feasible);
+
 #ifdef WITH_OPENCV
     renderTrajectory(plan_packet->cloud_points, 
                     plan_packet->obstacles,

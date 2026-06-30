@@ -131,6 +131,19 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                     // 障碍物参数
                     planing_config.obstacle_inflation = params.value("obstacle_inflation", 0.5f);
                     planing_config.safety_margin = params.value("safety_margin", 1.0f);
+                    // 势场参数
+                    planing_config.attractive_gain = params.value("attractive_gain", 1.0f);
+                    planing_config.repulsive_gain = params.value("repulsive_gain", 10.0f);
+                    planing_config.obstacle_influence_dist = params.value("obstacle_influence_dist", 5.0f);
+                    // 边界限制
+                    planing_config.enable_boundary = params.value("enable_boundary", false);
+                    planing_config.boundary_left = params.value("boundary_left", 3.75f);
+                    planing_config.boundary_right = params.value("boundary_right", -3.75f);
+                    planing_config.boundary_start_x = params.value("boundary_start_x", 0.0f);
+                    planing_config.boundary_end_x = params.value("boundary_end_x", 200.0f);
+                    planing_config.boundary_inflation = params.value("boundary_inflation", 0.3f);
+                    planing_config.boundary_repulsive_gain = params.value("boundary_repulsive_gain", 50.0f);
+                    planing_config.boundary_influence_dist = params.value("boundary_influence_dist", 2.0f);
                     // 目标点
                     planing_config.goal_x = params.value("goal_x", 100.0f);
                     planing_config.goal_y = params.value("goal_y", 0.0f);

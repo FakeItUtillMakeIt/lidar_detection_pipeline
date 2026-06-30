@@ -55,6 +55,21 @@ struct PlanningConfig {
     float obstacle_inflation = 0.5f;   // 障碍物膨胀半径 (m)
     float safety_margin = 1.0f;        // 安全距离 (m)
     
+    // 势场参数
+    float attractive_gain = 1.0f;      // 引力增益 (增大以避免局部最小值)
+    float repulsive_gain = 10.0f;      // 斥力增益 (减小以平衡引力)
+    float obstacle_influence_dist = 5.0f; // 障碍物影响距离 (m)
+    
+    // 边界限制 (道路边界)
+    bool enable_boundary = false;       // 是否启用边界限制
+    float boundary_left = 3.75f;       // 左边界距离 (m)，默认3.75m (一条车道)
+    float boundary_right = -3.75f;     // 右边界距离 (m)
+    float boundary_start_x = 0.0f;     // 边界起始x (m)
+    float boundary_end_x = 200.0f;     // 边界结束x (m)
+    float boundary_inflation = 0.3f;   // 边界膨胀半径 (m)
+    float boundary_repulsive_gain = 50.0f; // 边界斥力增益
+    float boundary_influence_dist = 2.0f;  // 边界影响距离 (m)
+    
     // 目标点 (相对坐标系下相对自车, 全局坐标系下绝对位置)
     float goal_x = 100.0f;            // 目标点x (m)
     float goal_y = 0.0f;              // 目标点y (m)
