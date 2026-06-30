@@ -11,12 +11,12 @@ namespace nodes {
 
 // 势场参数
 struct PotentialFieldParams {
-    float attractive_gain = 1.0f;      // 引力增益
+    float attractive_gain = 0.01f;      // 引力增益
     float repulsive_gain = 100.0f;     // 斥力增益
     float obstacle_influence_dist = 5.0f; // 障碍物影响距离 (m)
     float step_size = 0.5f;            // 梯度下降步长 (m)
     int max_iterations = 200;          // 最大迭代次数
-    float convergence_threshold = 0.01f; // 收敛阈值
+    float convergence_threshold = 2.0f; // 收敛阈值
 };
 
 class PotentialFieldPlanner : public IPlannerNode {

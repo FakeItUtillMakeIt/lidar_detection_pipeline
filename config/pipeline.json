@@ -47,15 +47,18 @@
             "id": "planner",
             "type": "potential_field_planner",
             "params": {
-                "planner_type": "potential_field",
+                "use_relative_frame": true,
                 "max_speed": 8.0,
                 "max_accel": 2.0,
                 "planning_horizon": 5.0,
                 "planning_resolution": 0.1,
+                "max_planning_points": 100,
                 "obstacle_inflation": 0.5,
                 "safety_margin": 1.0,
                 "goal_x": 100.0,
-                "goal_y": 0.0
+                "goal_y": 0.0,
+                "enable_control": true,
+                "control_frequency": 10.0
             }
         },
         {
@@ -79,6 +82,24 @@
             "params": {
                 "output_dir": "./out/trajectory"
             }
+        },
+        {
+            "id": "controller",
+            "type": "pid_controller",
+            "params": {
+                "controller_type": "pid",
+                "kp_speed": 1.0,
+                "ki_speed": 0.1,
+                "kd_speed": 0.05,
+                "kp_heading": 1.0,
+                "ki_heading": 0.0,
+                "kd_heading": 0.1,
+                "kp_lateral": 0.5,
+                "ki_lateral": 0.0,
+                "kd_lateral": 0.05,
+                "max_integral": 1.0,
+                "dt": 0.1
+            }
         }
     ],
     "edges": [
@@ -88,6 +109,7 @@
         {"from": "attribute", "to": "planner"},
         {"from": "attribute", "to": "file_output"},
         {"from": "attribute", "to": "bev_vis"},
-        {"from": "planner", "to": "traj_vis"}
+        {"from": "planner", "to": "traj_vis"},
+        {"from": "planner", "to": "controller"}
     ]
 }

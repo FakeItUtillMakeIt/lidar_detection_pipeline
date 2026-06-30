@@ -65,16 +65,27 @@ void PotentialFieldPlanner::pushData(std::shared_ptr<core::BasePacket> packet) {
         return;
     }
 
-    // 使用原点作为自车位置 (实际应用中应从传感器获取)
+    // 自车状态 (相对坐标系下始终在原点)
     core::EgoState ego_state;
     ego_state.x = 0.0f;
     ego_state.y = 0.0f;
     ego_state.heading = 0.0f;
     ego_state.speed = 0.0f;
     ego_state.timestamp_ns = packet->timestamp_ns;
+    ego_state.dt = config_.planning_resolution / config_.max_speed;  // 估算时间步长
+
+    // 在相对坐标系模式下，障碍物坐标已经是相对自车的
+    // 在全局坐标系模式下，需要将障碍物转换到自车坐标系
+    std::vector<core::Detection> obstacles = det_packet->detections;
+    
+    if (!config_.use_relative_frame) {
+        // 全局坐标系模式：将障碍物从全局坐标转换到自车局部坐标
+        // 这里假设自车位置已知，实际应用中应从传感器获取
+        // 暂时保持障碍物不变
+    }
 
     // 生成规划轨迹
-    latest_trajectory_ = generateTrajectory(det_packet->detections, ego_state);
+    latest_trajectory_ = generateTrajectory(obstacles, ego_state);
 
     // 创建规划数据包
     auto plan_packet = std::make_shared<core::PlanningPacket>();
@@ -135,7 +146,7 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
 
         // 检查是否到达目标点
         float dist_to_goal = distanceBetweenPoints(current_x, current_y, goal_x, goal_y);
-        if (dist_to_goal < config_.planning_resolution) {
+        if (dist_to_goal < config_.planning_resolution * 10.0f) {  // 放宽到10倍分辨率
             trajectory.is_feasible = true;
             trajectory.status = "Reached goal";
             break;
@@ -150,9 +161,22 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
 
         // 梯度下降更新位置
         float force_magnitude = std::sqrt(fx * fx + fy * fy);
+        //LOG_INFO_FMT("force_magnitude:{}",force_magnitude);
         if (force_magnitude < pf_params_.convergence_threshold) {
-            trajectory.is_feasible = false;
-            trajectory.status = "Converged to local minimum";
+            // 判断是否已经走了足够远（接近目标）
+            float progress = distanceBetweenPoints(ego_state.x, ego_state.y, current_x, current_y);
+            float total_dist = distanceBetweenPoints(ego_state.x, ego_state.y, goal_x, goal_y);
+            
+            LOG_INFO_FMT("total_dist:{}, progress:{}",total_dist,progress);
+            if (total_dist > 0 && progress / total_dist > 0.8f) {
+                // 已经走了80%以上的距离，视为可行
+                trajectory.is_feasible = true;
+                trajectory.status = "Near goal (local minimum accepted)";
+                
+            } else {
+                trajectory.is_feasible = false;
+                trajectory.status = "Converged to local minimum";
+            }
             break;
         }
 
@@ -175,8 +199,17 @@ core::Trajectory PotentialFieldPlanner::generateTrajectory(
 
     // 如果达到最大迭代次数但未到达目标
     if (!trajectory.is_feasible && trajectory.status.empty()) {
-        trajectory.is_feasible = false;
-        trajectory.status = "Max iterations reached";
+        // 检查进度：如果已经走了大部分距离，视为可行
+        float progress = distanceBetweenPoints(ego_state.x, ego_state.y, current_x, current_y);
+        float total_dist = distanceBetweenPoints(ego_state.x, ego_state.y, goal_x, goal_y);
+        
+        if (total_dist > 0 && progress / total_dist > 0.8f) {
+            trajectory.is_feasible = true;
+            trajectory.status = "Max iterations reached but near goal";
+        } else {
+            trajectory.is_feasible = false;
+            trajectory.status = "Max iterations reached";
+        }
     }
 
     // 计算轨迹速度
@@ -212,9 +245,9 @@ void PotentialFieldPlanner::computeAttractiveForce(
     float dist = std::sqrt(dx * dx + dy * dy);
     
     if (dist > 0.001f) {
-        // 线性引力 (距离远时力恒定)
-        fx = pf_params_.attractive_gain * dx / dist;
-        fy = pf_params_.attractive_gain * dy / dist;
+        // 二次引力：力与距离成正比，接近目标时力变小
+        fx = pf_params_.attractive_gain * dx;
+        fy = pf_params_.attractive_gain * dy;
     } else {
         fx = 0.0f;
         fy = 0.0f;

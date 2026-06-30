@@ -14,6 +14,7 @@
 #include "lidar_core/nodes/i_tracker_node.h"
 #include "lidar_core/nodes/i_attribute_node.h"
 #include "lidar_core/nodes/i_planner_node.h"
+#include "lidar_core/nodes/i_control_node.h"
 
 namespace lidar_core {
 namespace core {
@@ -116,11 +117,64 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                 auto plan_node = std::dynamic_pointer_cast<nodes::IPlannerNode>(node);
                 if (plan_node){
                     PlanningConfig planing_config;
-                    planing_config.max_speed=params.value("max_speed",8.0);
-                    planing_config.max_accel=params.value("max_accel",2.0);
-                    planing_config.goal_x=params.value("goal_x",100.0);
-                    planing_config.goal_y=params.value("goal_y",0.0);
+                    // 坐标系模式
+                    planing_config.use_relative_frame = params.value("use_relative_frame", true);
+                    // 速度与加速度约束
+                    planing_config.max_speed = params.value("max_speed", 10.0f);
+                    planing_config.max_accel = params.value("max_accel", 3.0f);
+                    planing_config.max_decel = params.value("max_decel", 5.0f);
+                    planing_config.max_lateral_accel = params.value("max_lateral_accel", 2.0f);
+                    // 规划参数
+                    planing_config.planning_horizon = params.value("planning_horizon", 5.0f);
+                    planing_config.planning_resolution = params.value("planning_resolution", 0.1f);
+                    planing_config.max_planning_points = params.value("max_planning_points", 100);
+                    // 障碍物参数
+                    planing_config.obstacle_inflation = params.value("obstacle_inflation", 0.5f);
+                    planing_config.safety_margin = params.value("safety_margin", 1.0f);
+                    // 目标点
+                    planing_config.goal_x = params.value("goal_x", 100.0f);
+                    planing_config.goal_y = params.value("goal_y", 0.0f);
+                    // 控制参数
+                    planing_config.enable_control = params.value("enable_control", true);
+                    planing_config.control_frequency = params.value("control_frequency", 10.0f);
+                    
                     plan_node->setPlannerConfig(planing_config);
+                    LOG_INFO_FMT("[Pipeline {}] Planner config: relative_frame={}, goal=({},{})", 
+                                 id_, planing_config.use_relative_frame, 
+                                 planing_config.goal_x, planing_config.goal_y);
+                }
+            }
+
+            if (type.find("controller") != std::string::npos || type.find("pid") != std::string::npos){
+                auto ctrl_node = std::dynamic_pointer_cast<nodes::IControlNode>(node);
+                if (ctrl_node){
+                    // 设置控制器类型
+                    std::string ctrl_type = params.value("controller_type", "pid");
+                    if (ctrl_type == "pid") {
+                        ctrl_node->setControllerType(nodes::ControllerType::PID);
+                    } else if (ctrl_type == "mpc") {
+                        ctrl_node->setControllerType(nodes::ControllerType::MPC);
+                    } else if (ctrl_type == "lqr") {
+                        ctrl_node->setControllerType(nodes::ControllerType::LQR);
+                    }
+                    
+                    // 设置PID参数
+                    nodes::PIDParams pid_params;
+                    pid_params.kp_speed = params.value("kp_speed", 1.0f);
+                    pid_params.ki_speed = params.value("ki_speed", 0.1f);
+                    pid_params.kd_speed = params.value("kd_speed", 0.05f);
+                    pid_params.kp_heading = params.value("kp_heading", 1.0f);
+                    pid_params.ki_heading = params.value("ki_heading", 0.0f);
+                    pid_params.kd_heading = params.value("kd_heading", 0.1f);
+                    pid_params.kp_lateral = params.value("kp_lateral", 0.5f);
+                    pid_params.ki_lateral = params.value("ki_lateral", 0.0f);
+                    pid_params.kd_lateral = params.value("kd_lateral", 0.05f);
+                    pid_params.max_integral = params.value("max_integral", 1.0f);
+                    pid_params.dt = params.value("dt", 0.1f);
+                    
+                    ctrl_node->setPIDParams(pid_params);
+                    LOG_INFO_FMT("[Pipeline {}] Controller config: type={}, kp_speed={}, kp_heading={}", 
+                                 id_, ctrl_type, pid_params.kp_speed, pid_params.kp_heading);
                 }
             }
 

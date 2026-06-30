@@ -168,6 +168,7 @@ if(WITH_PLANNER)
     set(PLANNER_NODE_SOURCES
         src/nodes/planner/potential_field_planner.cpp
         src/nodes/output/trajectory_visualizer_node.cpp
+        src/nodes/control/pid_controller.cpp
     )
 endif()
 
@@ -192,6 +193,7 @@ target_include_directories(lidar_nodes
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/track
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/attribute
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/planner
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/control
         ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/tracker/OCSort
 )
 
