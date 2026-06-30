@@ -44,6 +44,21 @@
             }
         },
         {
+            "id": "planner",
+            "type": "potential_field_planner",
+            "params": {
+                "planner_type": "potential_field",
+                "max_speed": 8.0,
+                "max_accel": 2.0,
+                "planning_horizon": 5.0,
+                "planning_resolution": 0.1,
+                "obstacle_inflation": 0.5,
+                "safety_margin": 1.0,
+                "goal_x": 100.0,
+                "goal_y": 0.0
+            }
+        },
+        {
             "id": "file_output",
             "type": "file_output",
             "params": {
@@ -57,13 +72,22 @@
             "params": {
                 "output_dir": "./out/bev"
             }
+        },
+        {
+            "id": "traj_vis",
+            "type": "trajectory_visualizer",
+            "params": {
+                "output_dir": "./out/trajectory"
+            }
         }
     ],
     "edges": [
         {"from": "source", "to": "infer"},
         {"from": "infer", "to": "tracker"},
         {"from": "tracker", "to": "attribute"},
+        {"from": "attribute", "to": "planner"},
         {"from": "attribute", "to": "file_output"},
-        {"from": "attribute", "to": "bev_vis"}
+        {"from": "attribute", "to": "bev_vis"},
+        {"from": "planner", "to": "traj_vis"}
     ]
 }

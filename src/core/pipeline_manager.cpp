@@ -13,6 +13,7 @@
 #include "lidar_core/nodes/i_output_node.h"
 #include "lidar_core/nodes/i_tracker_node.h"
 #include "lidar_core/nodes/i_attribute_node.h"
+#include "lidar_core/nodes/i_planner_node.h"
 
 namespace lidar_core {
 namespace core {
@@ -108,6 +109,18 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
                 auto attr_node = std::dynamic_pointer_cast<nodes::IAttributeNode>(node);
                 if (attr_node) {
                     attr_node->setTimeInterval(params.value("dt", 0.1f));
+                }
+            }
+
+            if (type.find("planner") != std::string::npos){
+                auto plan_node = std::dynamic_pointer_cast<nodes::IPlannerNode>(node);
+                if (plan_node){
+                    PlanningConfig planing_config;
+                    planing_config.max_speed=params.value("max_speed",8.0);
+                    planing_config.max_accel=params.value("max_accel",2.0);
+                    planing_config.goal_x=params.value("goal_x",100.0);
+                    planing_config.goal_y=params.value("goal_y",0.0);
+                    plan_node->setPlannerConfig(planing_config);
                 }
             }
 

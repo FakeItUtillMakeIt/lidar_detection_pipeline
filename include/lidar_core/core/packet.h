@@ -55,5 +55,30 @@ public:
     std::vector<PointXYZI> cloud_points;  // 携带点云用于BEV可视化
 };
 
+// 规划结果数据包
+class PlanningPacket : public BasePacket {
+public:
+    std::vector<Detection> obstacles;              // 规划考虑的障碍物
+    std::vector<PointXYZI> cloud_points;           // 携带点云用于可视化
+    
+    // 规划轨迹
+    struct PathPoint {
+        float x = 0.0f;           // x位置 (m)
+        float y = 0.0f;           // y位置 (m)
+        float z = 0.0f;           // z位置 (m)
+        float heading = 0.0f;     // 航向角 (rad)
+        float curvature = 0.0f;   // 曲率 (1/m)
+        float speed = 0.0f;       // 速度 (m/s)
+        float acceleration = 0.0f; // 加速度 (m/s²)
+        float relative_time = 0.0f; // 相对时间 (s)
+    };
+    std::vector<PathPoint> trajectory;             // 规划轨迹
+    
+    // 规划状态
+    bool is_feasible = false;                      // 轨迹是否可行
+    std::string planning_status;                   // 规划状态信息
+    uint64_t planning_timestamp_ns = 0;           // 规划时间戳
+};
+
 } // namespace core
 } // namespace lidar_core

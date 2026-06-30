@@ -19,6 +19,7 @@ option(WITH_ROS2 "Build with ROS2 support" OFF)
 option(WITH_OPENCV "Build with OpenCV BEV visualization" ON)
 option(WITH_TRACK "Build with tracking support" ON)
 option(WITH_ATTRIBUTE "Build with attribute node" ON)
+option(WITH_PLANNER "Build with planning support" ON)
 
 # OpenCV
 if(WITH_OPENCV)
@@ -162,12 +163,21 @@ if(WITH_ATTRIBUTE)
     )
 endif()
 
+# 规划节点
+if(WITH_PLANNER)
+    set(PLANNER_NODE_SOURCES
+        src/nodes/planner/potential_field_planner.cpp
+        src/nodes/output/trajectory_visualizer_node.cpp
+    )
+endif()
+
 add_library(lidar_nodes SHARED
     ${SOURCE_NODE_SOURCES}
     ${INFER_NODE_SOURCES}
     ${OUTPUT_NODE_SOURCES}
     ${TRACK_NODE_SOURCES}
     ${ATTRIBUTE_NODE_SOURCES}
+    ${PLANNER_NODE_SOURCES}
     ${PROJECT_SOURCE_DIR}/3rd_party/log_mgr/log_mgr.cpp
 )
 
@@ -181,6 +191,7 @@ target_include_directories(lidar_nodes
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/output
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/track
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/attribute
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/planner
         ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/tracker/OCSort
 )
 
@@ -235,5 +246,6 @@ message(STATUS "  CUDA Architectures:   ${CMAKE_CUDA_ARCHITECTURES}")
 message(STATUS "  ROS2 support:         ${WITH_ROS2}")
 message(STATUS "  OpenCV support:       ${WITH_OPENCV}")
 message(STATUS "  Tracking support:     ${WITH_TRACK}")
+message(STATUS "  Planner support:      ${WITH_PLANNER}")
 message(STATUS "  Install prefix:       ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "=====================================================")
