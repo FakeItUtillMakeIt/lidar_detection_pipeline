@@ -13,6 +13,7 @@ enum class PlannerType {
     POTENTIAL_FIELD = 0,    // 人工势场法
     LATTICE = 1,            // Lattice规划
     OPTIMIZATION = 2,       // 优化规划
+    ASTAR = 3,              // A*规划
 };
 
 // 规划节点接口

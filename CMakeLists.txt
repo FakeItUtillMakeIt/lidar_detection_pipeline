@@ -167,6 +167,7 @@ endif()
 if(WITH_PLANNER)
     set(PLANNER_NODE_SOURCES
         src/nodes/planner/potential_field_planner.cpp
+        src/nodes/planner/astar_planner.cpp
         src/nodes/output/trajectory_visualizer_node.cpp
         src/nodes/control/pid_controller.cpp
     )

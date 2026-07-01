@@ -1,6 +1,6 @@
 {
     "pipeline": {
-        "id": "lidar_detection_pipeline"
+        "id": "lidar_detection_pipeline_astar"
     },
     "nodes": [
         {
@@ -45,7 +45,7 @@
         },
         {
             "id": "planner",
-            "type": "potential_field_planner",
+            "type": "astar_planner",
             "params": {
                 "use_relative_frame": true,
                 "max_speed": 8.0,
@@ -56,8 +56,8 @@
                 "obstacle_inflation": 0.5,
                 "safety_margin": 1.0,
                 "attractive_gain": 0.5,
-                "repulsive_gain": 200.0,
-                "obstacle_influence_dist": 5.0,
+                "repulsive_gain": 50.0,
+                "obstacle_influence_dist": 8.0,
                 "enable_boundary": true,
                 "boundary_left": 3.75,
                 "boundary_right": -3.75,
@@ -84,14 +84,14 @@
             "id": "bev_vis",
             "type": "bev_visualizer",
             "params": {
-                "output_dir": "./out/bev"
+                "output_dir": "./out/bev_astar"
             }
         },
         {
             "id": "traj_vis",
             "type": "trajectory_visualizer",
             "params": {
-                "output_dir": "./out/trajectory"
+                "output_dir": "./out/trajectory_astar"
             }
         },
         {
