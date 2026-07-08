@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
 
-# CUDA 编译器和架构必须在 project() 之前设置
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda-13.1/bin/nvcc")
-set(CMAKE_CXX_COMPILER "/usr/bin/g++-9")
-set(CMAKE_CUDA_ARCHITECTURES "86")
+# CUDA 编译器和架构 (可以通过 -D 覆盖，例如 -DCMAKE_CUDA_ARCHITECTURES=89)
+if(NOT CMAKE_CUDA_COMPILER)
+    set(CMAKE_CUDA_COMPILER "/usr/local/cuda-13.1/bin/nvcc" CACHE STRING "CUDA compiler path")
+endif()
+if(NOT CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER "/usr/bin/g++-9" CACHE STRING "C++ compiler path")
+endif()
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA architectures (e.g. 86 for Ampere, 89 for Ada)")
+endif()
 
 project(lidar_detection_pipeline
     VERSION 1.0.0
@@ -65,12 +71,12 @@ find_package(spdlog REQUIRED)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    /usr/local/cuda-13.1/include
+    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     $ENV{TensorRT_Inc}
 )
 
 link_directories(
-    /usr/local/cuda-13.1/lib64
+    ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}
     $ENV{TensorRT_Lib}
 )
 
