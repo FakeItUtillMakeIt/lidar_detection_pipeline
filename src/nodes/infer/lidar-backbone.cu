@@ -50,7 +50,7 @@ public:
         if (voxels_float_) checkRuntime(cudaFree(voxels_float_));
     }
 
-    bool init(const std::string& model) {
+    bool init(const std::string& model, int max_voxels = 40000) {
         engine_ = TensorRT::load(model);
         if (engine_ == nullptr) return false;
 
@@ -68,7 +68,7 @@ public:
         checkRuntime(cudaMalloc(&dir_, volumn * sizeof(float)));
 
         // Allocate float buffer for voxels (TRT expects float32 input)
-        voxels_float_size_ = 10000 * 32 * 10;
+        voxels_float_size_ = max_voxels * 32 * 10;
         checkRuntime(cudaMalloc(&voxels_float_, voxels_float_size_ * sizeof(float)));
         return true;
     }

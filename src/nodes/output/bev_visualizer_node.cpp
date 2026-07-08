@@ -2,6 +2,9 @@
 #include "3rd_party/log_mgr/log_mgr.h"
 #include "bev_visualizer_node.h"
 #include "node_factory.h"
+#include <cerrno>
+#include <cinttypes>
+#include <cstring>
 #include <iostream>
 #include <sys/stat.h>
 
@@ -44,8 +47,12 @@ bool BEVVisualizerNode::start() {
 #ifdef WITH_OPENCV
     // 创建输出目录
     if (!output_dir_.empty()) {
-        mkdir("./out", 0755);  // 确保父目录存在
-        mkdir(output_dir_.c_str(), 0755);
+        if (mkdir("./out", 0755) != 0 && errno != EEXIST) {
+            LOG_WARN_FMT("[BEVVisualizerNode] Failed to create ./out: {}", strerror(errno));
+        }
+        if (mkdir(output_dir_.c_str(), 0755) != 0 && errno != EEXIST) {
+            LOG_WARN_FMT("[BEVVisualizerNode] Failed to create {}: {}", output_dir_, strerror(errno));
+        }
     }
 
     if (show_window_) {
@@ -90,10 +97,10 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
 
     cv::Mat img = cv::Mat::zeros(height_, width_, CV_8UC3);
 
-    // 绘制点云
+    // 绘制点云 (坐标变换: LiDAR x→OpenCV py(向上), LiDAR y→OpenCV px(向左))
     for (const auto& p : points) {
-        int px = static_cast<int>((p.x - origin_x_) * scale_);
-        int py = static_cast<int>((p.y - origin_y_) * scale_);
+        int px = static_cast<int>((p.y - origin_y_) * scale_);
+        int py = height_ - 1 - static_cast<int>((p.x - origin_x_) * scale_);
         if (px >= 0 && px < width_ && py >= 0 && py < height_) {
             uint8_t intensity = static_cast<uint8_t>(p.intensity * 255);
             img.at<cv::Vec3b>(py, px) = {intensity, intensity, intensity};
@@ -114,7 +121,7 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
 
     // 显示信息
     char buf[128];
-    snprintf(buf, sizeof(buf), "Frame: %lu | Dets: %zu",
+    snprintf(buf, sizeof(buf), "Frame: %" PRIu64 " | Dets: %zu",
              frame_id, detections.size());
     cv::putText(img, buf, cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.6, {255, 255, 255}, 1);
 
@@ -124,7 +131,7 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
         cv::waitKey(1);
     } else if (!output_dir_.empty()) {
         char filename[256];
-        snprintf(filename, sizeof(filename), "%s/bev_%06lu.png", output_dir_.c_str(), frame_id);
+        snprintf(filename, sizeof(filename), "%s/bev_%06" PRIu64 ".png", output_dir_.c_str(), frame_id);
         cv::imwrite(filename, img);
     }
 }
@@ -135,17 +142,23 @@ void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const 
     float half_l = det.l / 2;
     float half_w = det.w / 2;
 
+    // BEV坐标变换: LiDAR (lx, ly) → 图像 (py翻转=向上, px=向左)
+    // corners保存为 (px_source=ly, py_source=lx) 以简化映射
     cv::Point2f corners[4] = {
-        {det.x - half_l * cos_a - half_w * sin_a, det.y - half_l * sin_a + half_w * cos_a},
-        {det.x + half_l * cos_a - half_w * sin_a, det.y + half_l * sin_a + half_w * cos_a},
-        {det.x + half_l * cos_a + half_w * sin_a, det.y + half_l * sin_a - half_w * cos_a},
-        {det.x - half_l * cos_a + half_w * sin_a, det.y - half_l * sin_a - half_w * cos_a},
+        {det.y - half_l * sin_a - half_w * cos_a,
+         det.x - half_l * cos_a + half_w * sin_a},
+        {det.y + half_l * sin_a - half_w * cos_a,
+         det.x + half_l * cos_a + half_w * sin_a},
+        {det.y + half_l * sin_a + half_w * cos_a,
+         det.x + half_l * cos_a - half_w * sin_a},
+        {det.y - half_l * sin_a + half_w * cos_a,
+         det.x - half_l * cos_a - half_w * sin_a},
     };
 
     std::vector<cv::Point> pts;
     for (int i = 0; i < 4; i++) {
-        int px = static_cast<int>((corners[i].x - origin_x_) * scale_);
-        int py = static_cast<int>((corners[i].y - origin_y_) * scale_);
+        int px = static_cast<int>((corners[i].x - origin_y_) * scale_);
+        int py = height_ - 1 - static_cast<int>((corners[i].y - origin_x_) * scale_);
         pts.emplace_back(px, py);
     }
 
@@ -154,8 +167,8 @@ void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const 
     // 标签 (类别 + track_id + 速度)
     const char* labels[] = {"Car", "Ped", "Cyc"};
     const char* label = (det.class_id >= 0 && det.class_id < 3) ? labels[det.class_id] : "?";
-    int px = static_cast<int>((det.x - origin_x_) * scale_);
-    int py = static_cast<int>((det.y - origin_y_) * scale_) - 5;
+    int px = static_cast<int>((det.y - origin_y_) * scale_);
+    int py = height_ - 1 - static_cast<int>((det.x - origin_x_) * scale_) - 5;
     
     char text[64];
     if (det.track_id >= 0) {

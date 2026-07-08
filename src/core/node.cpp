@@ -7,9 +7,13 @@ namespace lidar_core {
 namespace core {
 
 void Node::broadcast(std::shared_ptr<BasePacket> packet) {
-    for (auto& weak_downstream : downstreams_) {
-        if (auto downstream = weak_downstream.lock()) {
-            downstream->pushData(packet);
+    for (size_t i = 0; i < downstreams_.size(); ++i) {
+        if (auto downstream = downstreams_[i].lock()) {
+            if (i + 1 < downstreams_.size()) {
+                downstream->pushData(packet->clone());
+            } else {
+                downstream->pushData(packet);
+            }
         }
     }
 }

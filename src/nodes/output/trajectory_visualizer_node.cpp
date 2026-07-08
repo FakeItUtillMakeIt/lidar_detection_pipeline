@@ -2,6 +2,9 @@
 #include "3rd_party/log_mgr/log_mgr.h"
 #include "trajectory_visualizer_node.h"
 #include "node_factory.h"
+#include <cerrno>
+#include <cinttypes>
+#include <cstring>
 #include <iostream>
 #include <sys/stat.h>
 
@@ -42,8 +45,12 @@ bool TrajectoryVisualizerNode::start() {
 
 #ifdef WITH_OPENCV
     if (!output_dir_.empty()) {
-        mkdir("./out", 0755);
-        mkdir(output_dir_.c_str(), 0755);
+        if (mkdir("./out", 0755) != 0 && errno != EEXIST) {
+            LOG_WARN_FMT("[TrajectoryVisualizerNode] Failed to create ./out: {}", strerror(errno));
+        }
+        if (mkdir(output_dir_.c_str(), 0755) != 0 && errno != EEXIST) {
+            LOG_WARN_FMT("[TrajectoryVisualizerNode] Failed to create {}: {}", output_dir_, strerror(errno));
+        }
     }
 
     if (show_window_) {
@@ -99,10 +106,10 @@ void TrajectoryVisualizerNode::renderTrajectory(
 
     cv::Mat img = cv::Mat::zeros(height_, width_, CV_8UC3);
 
-    // 绘制点云
+    // 绘制点云 (坐标变换: LiDAR x→OpenCV py(向上), LiDAR y→OpenCV px(向左))
     for (const auto& p : points) {
-        int px = static_cast<int>((p.x - origin_x_) * scale_);
-        int py = static_cast<int>((p.y - origin_y_) * scale_);
+        int px = static_cast<int>((p.y - origin_y_) * scale_);
+        int py = height_ - 1 - static_cast<int>((p.x - origin_x_) * scale_);
         if (px >= 0 && px < width_ && py >= 0 && py < height_) {
             uint8_t intensity = static_cast<uint8_t>(p.intensity * 255);
             img.at<cv::Vec3b>(py, px) = {intensity, intensity, intensity};
@@ -124,16 +131,16 @@ void TrajectoryVisualizerNode::renderTrajectory(
     // 绘制规划轨迹
     drawTrajectory(img, trajectory, is_feasible);
 
-    // 绘制目标点
-    int goal_px = static_cast<int>((100.0f - origin_x_) * scale_);
-    int goal_py = static_cast<int>((0.0f - origin_y_) * scale_);
+    // 绘制目标点 (坐标变换: LiDAR→图像)
+    int goal_px = static_cast<int>((0.0f - origin_y_) * scale_);
+    int goal_py = height_ - 1 - static_cast<int>((100.0f - origin_x_) * scale_);
     cv::circle(img, cv::Point(goal_px, goal_py), 10, {0, 255, 255}, -1);
     cv::putText(img, "Goal", cv::Point(goal_px + 15, goal_py), 
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, {0, 255, 255}, 1);
 
     // 显示信息
     char buf[128];
-    snprintf(buf, sizeof(buf), "Frame: %lu | Dets: %zu | Traj: %zu | Feasible: %s",
+    snprintf(buf, sizeof(buf), "Frame: %" PRIu64 " | Dets: %zu | Traj: %zu | Feasible: %s",
              frame_id, detections.size(), trajectory.size(),
              is_feasible ? "Yes" : "No");
     cv::putText(img, buf, cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.6, {255, 255, 255}, 1);
@@ -151,7 +158,7 @@ void TrajectoryVisualizerNode::renderTrajectory(
         cv::waitKey(1);
     } else if (!output_dir_.empty()) {
         char filename[256];
-        snprintf(filename, sizeof(filename), "%s/trajectory_%06lu.png", 
+        snprintf(filename, sizeof(filename), "%s/trajectory_%06" PRIu64 ".png", 
                  output_dir_.c_str(), frame_id);
         cv::imwrite(filename, img);
     }
@@ -163,17 +170,23 @@ void TrajectoryVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det,
     float half_l = det.l / 2;
     float half_w = det.w / 2;
 
+    // BEV坐标变换: LiDAR (lx, ly) → 图像 (py翻转=向上, px=向左)
+    // corners保存为 (px_source=ly, py_source=lx) 以简化映射
     cv::Point2f corners[4] = {
-        {det.x - half_l * cos_a - half_w * sin_a, det.y - half_l * sin_a + half_w * cos_a},
-        {det.x + half_l * cos_a - half_w * sin_a, det.y + half_l * sin_a + half_w * cos_a},
-        {det.x + half_l * cos_a + half_w * sin_a, det.y + half_l * sin_a - half_w * cos_a},
-        {det.x - half_l * cos_a + half_w * sin_a, det.y - half_l * sin_a - half_w * cos_a},
+        {det.y - half_l * sin_a - half_w * cos_a,
+         det.x - half_l * cos_a + half_w * sin_a},
+        {det.y + half_l * sin_a - half_w * cos_a,
+         det.x + half_l * cos_a + half_w * sin_a},
+        {det.y + half_l * sin_a + half_w * cos_a,
+         det.x + half_l * cos_a - half_w * sin_a},
+        {det.y - half_l * sin_a + half_w * cos_a,
+         det.x - half_l * cos_a - half_w * sin_a},
     };
 
     std::vector<cv::Point> pts;
     for (int i = 0; i < 4; i++) {
-        int px = static_cast<int>((corners[i].x - origin_x_) * scale_);
-        int py = static_cast<int>((corners[i].y - origin_y_) * scale_);
+        int px = static_cast<int>((corners[i].x - origin_y_) * scale_);
+        int py = height_ - 1 - static_cast<int>((corners[i].y - origin_x_) * scale_);
         pts.emplace_back(px, py);
     }
 
@@ -182,8 +195,8 @@ void TrajectoryVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det,
     // 标签
     const char* labels[] = {"Car", "Ped", "Cyc"};
     const char* label = (det.class_id >= 0 && det.class_id < 3) ? labels[det.class_id] : "?";
-    int px = static_cast<int>((det.x - origin_x_) * scale_);
-    int py = static_cast<int>((det.y - origin_y_) * scale_) - 5;
+    int px = static_cast<int>((det.y - origin_y_) * scale_);
+    int py = height_ - 1 - static_cast<int>((det.x - origin_x_) * scale_) - 5;
     
     char text[64];
     if (det.track_id >= 0) {
@@ -204,25 +217,23 @@ void TrajectoryVisualizerNode::drawTrajectory(
     // 根据可行性选择颜色
     cv::Scalar traj_color = is_feasible ? cv::Scalar(0, 255, 255) : cv::Scalar(0, 128, 255);
 
-    // 绘制轨迹点
+    // 绘制轨迹点 (坐标变换: LiDAR x→py(翻转), y→px)
     for (size_t i = 0; i < trajectory.size(); ++i) {
-        int px = static_cast<int>((trajectory[i].x - origin_x_) * scale_);
-        int py = static_cast<int>((trajectory[i].y - origin_y_) * scale_);
+        int px = static_cast<int>((trajectory[i].y - origin_y_) * scale_);
+        int py = height_ - 1 - static_cast<int>((trajectory[i].x - origin_x_) * scale_);
         
-        // 绘制点
         cv::circle(img, cv::Point(px, py), 3, traj_color, -1);
         
-        // 绘制连接线
         if (i > 0) {
-            int prev_px = static_cast<int>((trajectory[i-1].x - origin_x_) * scale_);
-            int prev_py = static_cast<int>((trajectory[i-1].y - origin_y_) * scale_);
+            int prev_px = static_cast<int>((trajectory[i-1].y - origin_y_) * scale_);
+            int prev_py = height_ - 1 - static_cast<int>((trajectory[i-1].x - origin_x_) * scale_);
             cv::line(img, cv::Point(prev_px, prev_py), cv::Point(px, py), traj_color, 2);
         }
     }
 
     // 绘制起点（自车位置）
-    int start_px = static_cast<int>((0.0f - origin_x_) * scale_);
-    int start_py = static_cast<int>((0.0f - origin_y_) * scale_);
+    int start_px = static_cast<int>((0.0f - origin_y_) * scale_);
+    int start_py = height_ - 1 - static_cast<int>((0.0f - origin_x_) * scale_);
     cv::circle(img, cv::Point(start_px, start_py), 8, {255, 255, 255}, -1);
     cv::putText(img, "Ego", cv::Point(start_px + 10, start_py), 
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, {255, 255, 255}, 1);

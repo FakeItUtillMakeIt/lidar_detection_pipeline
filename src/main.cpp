@@ -1,4 +1,5 @@
 // src/main.cpp
+#include <cinttypes>
 #include <iostream>
 #include <string>
 #include <csignal>
@@ -73,7 +74,8 @@ static int runSync(const nlohmann::json& config) {
 
     LOG_INFO_FMT("[Main] Done. Processed {} frames in {}s", frame_count, total_sec);
     if (total_sec > 0) {
-        LOG_INFO_FMT("[Main] FPS: {}", frame_count / total_sec);
+        double fps = static_cast<double>(frame_count) / total_sec;
+        LOG_INFO_FMT("[Main] FPS: {}", fps);
     }
     std::cout << std::endl;
 
@@ -138,6 +140,19 @@ int main(int argc, char** argv) {
     }
 
     std::string config_path = "../config/pipeline.json";
+    // 也尝试从可执行文件所在目录的父目录查找
+    {
+        std::string exe_dir(argv[0]);
+        auto pos = exe_dir.find_last_of("/\\");
+        if (pos != std::string::npos) {
+            exe_dir = exe_dir.substr(0, pos);
+            std::string alt_path = exe_dir + "/../config/pipeline.json";
+            std::ifstream test(alt_path);
+            if (test.is_open()) {
+                config_path = alt_path;
+            }
+        }
+    }
     bool async_mode = false;
     size_t queue_size = 3;
 

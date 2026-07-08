@@ -2,6 +2,7 @@
 #include "3rd_party/log_mgr/log_mgr.h"
 #include "detection_infer_node.h"
 #include "node_factory.h"
+#include <cstring>
 #include <iostream>
 
 namespace lidar_core {
@@ -86,16 +87,11 @@ void DetectionInferNode::pushData(std::shared_ptr<core::BasePacket> packet) {
     pipeline::PointCloud cloud;
     cloud.frame_id = cloud_packet->frame_id;
     cloud.timestamp_ns = cloud_packet->timestamp_ns;
-    cloud.points.reserve(cloud_packet->points.size());
-    
-    for (const auto& pt : cloud_packet->points) {
-        pipeline::PointXYZI point;
-        point.x = pt.x;
-        point.y = pt.y;
-        point.z = pt.z;
-        point.intensity = pt.intensity;
-        cloud.points.push_back(point);
-    }
+    cloud.points.resize(cloud_packet->points.size());
+    static_assert(sizeof(pipeline::PointXYZI) == sizeof(core::PointXYZI),
+                  "PointXYZI layout must match between namespaces");
+    std::memcpy(cloud.points.data(), cloud_packet->points.data(),
+                cloud_packet->points.size() * sizeof(core::PointXYZI));
 
     // 执行推理
     auto detections = engine_->detect(cloud);

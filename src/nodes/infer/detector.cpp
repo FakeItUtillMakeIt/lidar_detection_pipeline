@@ -12,7 +12,6 @@ class DetectorImpl : public Detector {
 public:
     ~DetectorImpl() override {
         if (points_device_) cudaFree(points_device_);
-        if (points_host_) cudaFreeHost(points_host_);
     }
 
     bool init(const DetectorConfig& config) {
@@ -49,7 +48,6 @@ public:
         capacity_points_ = config.max_points;
         size_t bytes = capacity_points_ * config.num_feature * sizeof(float);
         cudaMalloc(&points_device_, bytes);
-        cudaMallocHost(&points_host_, bytes);
 
         return true;
     }
@@ -60,8 +58,7 @@ public:
         num_points = std::min(cap, num_points);
 
         size_t bytes = num_points * config_.num_feature * sizeof(float);
-        cudaMemcpyAsync(points_host_, points, bytes, cudaMemcpyHostToHost, _stream);
-        cudaMemcpyAsync(points_device_, points_host_, bytes, cudaMemcpyHostToDevice, _stream);
+        cudaMemcpyAsync(points_device_, points, bytes, cudaMemcpyHostToDevice, _stream);
 
         voxelization_->forward(points_device_, num_points, _stream);
         backbone_->forward(
@@ -88,7 +85,6 @@ private:
     std::shared_ptr<PostProcess> postprocess_;
 
     float* points_device_ = nullptr;
-    float* points_host_ = nullptr;
     size_t capacity_points_ = 0;
     bool timer_enabled_ = false;
 };

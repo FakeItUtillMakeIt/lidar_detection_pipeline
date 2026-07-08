@@ -38,6 +38,7 @@ struct Detection {
 class BasePacket {
 public:
     virtual ~BasePacket() = default;
+    virtual std::shared_ptr<BasePacket> clone() const = 0;
     uint64_t frame_id = 0;
     uint64_t timestamp_ns = 0;
 };
@@ -45,12 +46,18 @@ public:
 // 点云数据包
 class PointCloudPacket : public BasePacket {
 public:
+    std::shared_ptr<BasePacket> clone() const override {
+        return std::make_shared<PointCloudPacket>(*this);
+    }
     std::vector<PointXYZI> points;
 };
 
 // 检测结果数据包
 class DetectionPacket : public BasePacket {
 public:
+    std::shared_ptr<BasePacket> clone() const override {
+        return std::make_shared<DetectionPacket>(*this);
+    }
     std::vector<Detection> detections;
     std::vector<PointXYZI> cloud_points;  // 携带点云用于BEV可视化
 };
@@ -58,6 +65,9 @@ public:
 // 规划结果数据包
 class PlanningPacket : public BasePacket {
 public:
+    std::shared_ptr<BasePacket> clone() const override {
+        return std::make_shared<PlanningPacket>(*this);
+    }
     std::vector<Detection> obstacles;              // 规划考虑的障碍物
     std::vector<PointXYZI> cloud_points;           // 携带点云用于可视化
     
