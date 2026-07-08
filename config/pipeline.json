@@ -7,7 +7,7 @@
             "id": "source",
             "type": "bin_source",
             "params": {
-                "input_path": "../data",
+                "input_path": "../data/test_1/pointcloud",
                 "input_type": "bin"
             }
         },
@@ -76,7 +76,7 @@
             "id": "file_output",
             "type": "file_output",
             "params": {
-                "output_dir": "./out",
+                "output_dir": "./out/inference",
                 "output_type": "file"
             }
         },

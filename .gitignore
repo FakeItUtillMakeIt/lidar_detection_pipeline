@@ -43,3 +43,9 @@
 /[Bb]uild
 
 [Rr]uns/
+
+/[Dd]ata/test*
+
+/kitti_*
+
+/[Tt]est_*
