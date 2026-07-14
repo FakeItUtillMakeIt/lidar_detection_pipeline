@@ -133,10 +133,17 @@ def main():
                         default='/home/sevnce/lj/project/lidar_detection_pipeline/build/out/inference')
     parser.add_argument('--output_dir',
                         default='/home/sevnce/lj/project/lidar_detection_pipeline/build/out/projection')
-    parser.add_argument('--score_thresh', type=float, default=0.1)
+    parser.add_argument('--pc_dir', default=None,
+                        help='点云目录 (默认: data_dir/pointcloud)')
+    parser.add_argument('--score_thresh', type=float, default=0.5)
     parser.add_argument('--max_frames', type=int, default=0, help='0=全部')
+    parser.add_argument('--no_pointcloud', action='store_true',
+                        help='不渲染点云')
+    parser.add_argument('--pc_max_points', type=int, default=60000,
+                        help='点云最大渲染点数 (默认20000, 0=全部)')
     args = parser.parse_args()
 
+    pc_dir = args.pc_dir or os.path.join(args.data_dir, 'pointcloud')
     os.makedirs(args.output_dir, exist_ok=True)
 
     # 读取标定
@@ -168,17 +175,49 @@ def main():
             print(f'[SKIP] 无法读取图像: {img_path}')
             continue
 
+        # --- 渲染点云 ---
+        if not args.no_pointcloud:
+            pc_path = os.path.join(pc_dir, f'{frame_id}.bin')
+            if os.path.exists(pc_path):
+                pc = np.fromfile(pc_path, dtype=np.float32).reshape(-1, 4)
+                pc_xyz = pc[:, :3]
+                pix_pc, depth_pc = project_lidar_to_image(
+                    pc_xyz, velo_to_cam, R_rect_00, P_rect)
+                valid_pc = ((depth_pc > 0) &
+                            (pix_pc[:, 0] >= 0) & (pix_pc[:, 0] < img.shape[1]) &
+                            (pix_pc[:, 1] >= 0) & (pix_pc[:, 1] < img.shape[0]))
+                idxs = np.where(valid_pc)[0]
+                if args.pc_max_points > 0 and len(idxs) > args.pc_max_points:
+                    idxs = np.random.choice(idxs, args.pc_max_points, replace=False)
+                for i in idxs:
+                    u, v = int(pix_pc[i, 0]), int(pix_pc[i, 1])
+                    d = depth_pc[i]
+                    r = max(1, int(6 / d))
+                    # 深度着色: 1像素点, 近=绿, 远=红
+                    g = max(0, min(255, int(255 * (50 - d) / 50)))
+                    r = max(0, min(255, int(255 * d / 50)))
+                    img[v, u] = (0, g, r)
+
+        # --- 渲染3D检测框 ---
+        img_h, img_w = img.shape[:2]
         valid_count = 0
         for det in detections:
             x, y, z, w, l, h, yaw, class_id, score = det
             if score < args.score_thresh:
                 continue
 
+            # 过滤掉中心在相机后方或超出图像范围的框
+            center_pix, center_dep = project_lidar_to_image(
+                np.array([[x, y, z]]), velo_to_cam, R_rect_00, P_rect)
+            if (center_dep[0] <= 0 or
+                center_pix[0, 0] < 0 or center_pix[0, 0] >= img_w or
+                center_pix[0, 1] < 0 or center_pix[0, 1] >= img_h):
+                continue
+
             corners = box_3d_corners(x, y, z, w, l, h, yaw)
             pixels, depths = project_lidar_to_image(
                 corners, velo_to_cam, R_rect_00, P_rect)
 
-            img_h, img_w = img.shape[:2]
             if np.all(depths <= 0):
                 continue
 
@@ -215,11 +254,12 @@ def main():
 
             valid_count += 1
 
+        point_count = np.sum(valid_pc) if not args.no_pointcloud and os.path.exists(pc_path) else 0
         out_path = os.path.join(args.output_dir, f'proj_{frame_id}.png')
         cv2.imwrite(out_path, img)
         count += 1
         print(f'[{count}] Frame {frame_id}: {valid_count}/{len(detections)} '
-              f'框已投影 -> {out_path}')
+              f'框已投影, 点云 {point_count} 点 -> {out_path}')
 
         if args.max_frames > 0 and count >= args.max_frames:
             break
