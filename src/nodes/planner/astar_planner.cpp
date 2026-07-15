@@ -79,6 +79,12 @@ void AStarPlanner::pushData(std::shared_ptr<core::BasePacket> packet) {
 
     // 障碍物
     std::vector<core::Detection> obstacles = det_packet->detections;
+    // 过滤自车附近误检（车体 ~2m 宽，框在原点附近通常是自车）
+    const float kMinObstacleDist = 2.5f;
+    obstacles.erase(std::remove_if(obstacles.begin(), obstacles.end(),
+        [kMinObstacleDist](const core::Detection& d) {
+            return std::sqrt(d.x * d.x + d.y * d.y) < kMinObstacleDist;
+        }), obstacles.end());
 
     // 生成规划轨迹
     latest_trajectory_ = generateTrajectory(obstacles, ego_state);

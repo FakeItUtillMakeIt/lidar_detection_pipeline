@@ -81,7 +81,13 @@ void PotentialFieldPlanner::pushData(std::shared_ptr<core::BasePacket> packet) {
     // 在相对坐标系模式下，障碍物坐标已经是相对自车的
     // 在全局坐标系模式下，需要将障碍物转换到自车坐标系
     std::vector<core::Detection> obstacles = det_packet->detections;
-    
+    // 过滤自车附近误检（车体 ~2m 宽，框在原点附近通常是自车）
+    const float kMinObstacleDist = 2.5f;
+    obstacles.erase(std::remove_if(obstacles.begin(), obstacles.end(),
+        [kMinObstacleDist](const core::Detection& d) {
+            return std::sqrt(d.x * d.x + d.y * d.y) < kMinObstacleDist;
+        }), obstacles.end());
+
     if (!config_.use_relative_frame) {
         // 全局坐标系模式：将障碍物从全局坐标转换到自车局部坐标
         // 这里假设自车位置已知，实际应用中应从传感器获取
