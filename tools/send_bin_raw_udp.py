@@ -22,9 +22,9 @@ import numpy as np
 
 PORT = 2368
 MAGIC = 0x41444350  # 'PCDA'
-PTS_PER_PKT = 86            # 86 点/包 ≈ 1392 字节
-BATCH_SIZE = 100            # 每批包数
-BATCH_DELAY = 0.002         # 批间延迟 2ms
+PTS_PER_PKT = 4000           # 4000 点/包 ≈ 64KB
+BATCH_SIZE = 3               # 每批 3 包 ≈ 192KB（内核缓冲可容）
+BATCH_DELAY = 0.001          # 批间 1ms 供接收端排空
 
 
 def send_file(sock, bin_path, frame_id, target):

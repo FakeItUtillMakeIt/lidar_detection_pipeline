@@ -63,8 +63,8 @@ static int runSync(const nlohmann::json& config) {
     uint64_t frame_count = 0;
     auto total_start = std::chrono::high_resolution_clock::now();
 
-    // idle timeout: 连续 5 秒无数据则退出
-    const int kIdleLimit = 500;
+    // idle timeout: 连续 ~5 秒无数据则退出
+    const int kIdleLimit = 5000;
     int idle_count = 0;
 
     while (g_running && pipeline->isRunning()) {
@@ -74,7 +74,7 @@ static int runSync(const nlohmann::json& config) {
                 LOG_INFO_FMT("[Main] No data for {} consecutive polls, exiting", idle_count);
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
         idle_count = 0;  // 有数据则重置空闲计数

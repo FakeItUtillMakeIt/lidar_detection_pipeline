@@ -61,8 +61,10 @@ bool Pipeline::buildFromJson(const nlohmann::json& config) {
             if (type.find("infer") != std::string::npos) {
                 auto infer_node = std::dynamic_pointer_cast<nodes::IInferNode>(node);
                 if (infer_node) {
+                    std::string mp = params.value("model_path", "");
+                    LOG_INFO_FMT("[Pipeline {}] Model path from config: '{}'", id_, mp);
                     infer_node->setModelParams(
-                        params.value("model_path", ""),
+                        mp,
                         params.value("score_thresh", 0.1f),
                         params.value("nms_thresh", 0.01f)
                     );

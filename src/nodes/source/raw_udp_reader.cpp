@@ -111,7 +111,7 @@ bool RawUdpReader::read(PointCloud& cloud) {
 
         if (buf_.empty()) return false;
 
-        usleep(1000);  // 1ms 快速轮询下一批
+        usleep(500);  // 有数据但没收齐 → 快轮
         idle++;
     }
 
