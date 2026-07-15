@@ -99,7 +99,7 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
 
     // 绘制点云 (坐标变换: LiDAR x→OpenCV py(向上), LiDAR y→OpenCV px(向左))
     for (const auto& p : points) {
-        int px = static_cast<int>((p.y - origin_y_) * scale_);
+        int px = width_ / 2 - static_cast<int>(p.y * scale_);
         int py = height_ - 1 - static_cast<int>((p.x - origin_x_) * scale_);
         if (px >= 0 && px < width_ && py >= 0 && py < height_) {
             uint8_t intensity = static_cast<uint8_t>(p.intensity * 255);
@@ -139,8 +139,8 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
 void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const cv::Scalar& color) {
     float cos_a = cos(det.rt);
     float sin_a = sin(det.rt);
-    float half_l = det.l / 2;
-    float half_w = det.w / 2;
+    float half_l = det.w / 2;
+    float half_w = det.l / 2;
 
     // BEV坐标变换: LiDAR (lx, ly) → 图像 (py翻转=向上, px=向左)
     // corners保存为 (px_source=ly, py_source=lx) 以简化映射
@@ -157,7 +157,7 @@ void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const 
 
     std::vector<cv::Point> pts;
     for (int i = 0; i < 4; i++) {
-        int px = static_cast<int>((corners[i].x - origin_y_) * scale_);
+        int px = width_ / 2 - static_cast<int>(corners[i].x * scale_);
         int py = height_ - 1 - static_cast<int>((corners[i].y - origin_x_) * scale_);
         pts.emplace_back(px, py);
     }
@@ -167,7 +167,7 @@ void BEVVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const 
     // 标签 (类别 + track_id + 速度)
     const char* labels[] = {"Car", "Ped", "Cyc"};
     const char* label = (det.class_id >= 0 && det.class_id < 3) ? labels[det.class_id] : "?";
-    int px = static_cast<int>((det.y - origin_y_) * scale_);
+    int px = width_ / 2 - static_cast<int>(det.y * scale_);
     int py = height_ - 1 - static_cast<int>((det.x - origin_x_) * scale_) - 5;
     
     char text[64];
