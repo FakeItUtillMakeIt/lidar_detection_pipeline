@@ -15,7 +15,7 @@
             "id": "infer",
             "type": "detection_infer",
             "params": {
-                "model_path": "../model/pointpillar/pointpillar.plan",
+                "model_path": "../model/pointpillar/pointpillar.engine",
                 "score_thresh": 0.1,
                 "nms_thresh": 0.01
             }

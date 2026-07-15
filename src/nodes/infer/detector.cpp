@@ -64,7 +64,6 @@ public:
         backbone_->forward(
             voxelization_->features(),
             voxelization_->coords(),
-            voxelization_->params(),
             _stream
         );
         postprocess_->forward(backbone_->cls(), backbone_->box(), backbone_->dir(), _stream);

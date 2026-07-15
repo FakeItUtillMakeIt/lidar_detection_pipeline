@@ -54,9 +54,9 @@ public:
         engine_ = TensorRT::load(model);
         if (engine_ == nullptr) return false;
 
-        cls_dims_ = engine_->static_dims(3);
-        box_dims_ = engine_->static_dims(4);
-        dir_dims_ = engine_->static_dims(5);
+        cls_dims_ = engine_->static_dims(2);
+        box_dims_ = engine_->static_dims(3);
+        dir_dims_ = engine_->static_dims(4);
 
         int32_t volumn = std::accumulate(cls_dims_.begin(), cls_dims_.end(), 1, std::multiplies<int32_t>());
         checkRuntime(cudaMalloc(&cls_, volumn * sizeof(float)));
@@ -75,7 +75,7 @@ public:
 
     virtual void print() override { engine_->print("Lidar Backbone"); }
 
-    virtual void forward(const nvtype::half* voxels, const unsigned int* voxel_idxs, const unsigned int* params, void* stream = nullptr) override {
+    virtual void forward(const nvtype::half* voxels, const unsigned int* voxel_idxs, void* stream = nullptr) override {
         cudaStream_t _stream = reinterpret_cast<cudaStream_t>(stream);
 
         // Convert half to float before feeding to TRT engine
@@ -83,7 +83,7 @@ public:
         int blocks = (voxels_float_size_ + threads - 1) / threads;
         half2float_kernel<<<blocks, threads, 0, _stream>>>(voxels, voxels_float_, voxels_float_size_);
 
-        engine_->forward({voxels_float_, voxel_idxs, params, cls_, box_, dir_}, static_cast<cudaStream_t>(_stream));
+        engine_->forward({voxels_float_, voxel_idxs, cls_, box_, dir_}, static_cast<cudaStream_t>(_stream));
     }
 
     virtual float* cls() override { return cls_; }
