@@ -108,7 +108,7 @@ void TrajectoryVisualizerNode::renderTrajectory(
 
     // 绘制点云 (坐标变换: LiDAR x→OpenCV py(向上), LiDAR y→OpenCV px(向左))
     for (const auto& p : points) {
-        int px = static_cast<int>((p.y - origin_y_) * scale_);
+        int px = width_ / 2 - static_cast<int>(p.y * scale_);
         int py = height_ - 1 - static_cast<int>((p.x - origin_x_) * scale_);
         if (px >= 0 && px < width_ && py >= 0 && py < height_) {
             uint8_t intensity = static_cast<uint8_t>(p.intensity * 255);
@@ -132,7 +132,7 @@ void TrajectoryVisualizerNode::renderTrajectory(
     drawTrajectory(img, trajectory, is_feasible);
 
     // 绘制目标点 (坐标变换: LiDAR→图像)
-    int goal_px = static_cast<int>((0.0f - origin_y_) * scale_);
+    int goal_px = width_ / 2 - static_cast<int>(0.0f * scale_);
     int goal_py = height_ - 1 - static_cast<int>((100.0f - origin_x_) * scale_);
     cv::circle(img, cv::Point(goal_px, goal_py), 10, {0, 255, 255}, -1);
     cv::putText(img, "Goal", cv::Point(goal_px + 15, goal_py), 
@@ -167,8 +167,8 @@ void TrajectoryVisualizerNode::renderTrajectory(
 void TrajectoryVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det, const cv::Scalar& color) {
     float cos_a = cos(det.rt);
     float sin_a = sin(det.rt);
-    float half_l = det.l / 2;
-    float half_w = det.w / 2;
+    float half_l = det.w / 2;
+    float half_w = det.l / 2;
 
     // BEV坐标变换: LiDAR (lx, ly) → 图像 (py翻转=向上, px=向左)
     // corners保存为 (px_source=ly, py_source=lx) 以简化映射
@@ -185,7 +185,7 @@ void TrajectoryVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det,
 
     std::vector<cv::Point> pts;
     for (int i = 0; i < 4; i++) {
-        int px = static_cast<int>((corners[i].x - origin_y_) * scale_);
+        int px = width_ / 2 - static_cast<int>(corners[i].x * scale_);
         int py = height_ - 1 - static_cast<int>((corners[i].y - origin_x_) * scale_);
         pts.emplace_back(px, py);
     }
@@ -195,7 +195,7 @@ void TrajectoryVisualizerNode::drawBox(cv::Mat& img, const core::Detection& det,
     // 标签
     const char* labels[] = {"Car", "Ped", "Cyc"};
     const char* label = (det.class_id >= 0 && det.class_id < 3) ? labels[det.class_id] : "?";
-    int px = static_cast<int>((det.y - origin_y_) * scale_);
+    int px = width_ / 2 - static_cast<int>(det.y * scale_);
     int py = height_ - 1 - static_cast<int>((det.x - origin_x_) * scale_) - 5;
     
     char text[64];
@@ -219,20 +219,20 @@ void TrajectoryVisualizerNode::drawTrajectory(
 
     // 绘制轨迹点 (坐标变换: LiDAR x→py(翻转), y→px)
     for (size_t i = 0; i < trajectory.size(); ++i) {
-        int px = static_cast<int>((trajectory[i].y - origin_y_) * scale_);
+        int px = width_ / 2 - static_cast<int>(trajectory[i].y * scale_);
         int py = height_ - 1 - static_cast<int>((trajectory[i].x - origin_x_) * scale_);
         
         cv::circle(img, cv::Point(px, py), 3, traj_color, -1);
         
         if (i > 0) {
-            int prev_px = static_cast<int>((trajectory[i-1].y - origin_y_) * scale_);
+            int prev_px = width_ / 2 - static_cast<int>(trajectory[i-1].y * scale_);
             int prev_py = height_ - 1 - static_cast<int>((trajectory[i-1].x - origin_x_) * scale_);
             cv::line(img, cv::Point(prev_px, prev_py), cv::Point(px, py), traj_color, 2);
         }
     }
 
     // 绘制起点（自车位置）
-    int start_px = static_cast<int>((0.0f - origin_y_) * scale_);
+    int start_px = width_ / 2 - static_cast<int>(0.0f * scale_);
     int start_py = height_ - 1 - static_cast<int>((0.0f - origin_x_) * scale_);
     cv::circle(img, cv::Point(start_px, start_py), 8, {255, 255, 255}, -1);
     cv::putText(img, "Ego", cv::Point(start_px + 10, start_py), 
