@@ -1,0 +1,36 @@
+{
+    "pipeline": {
+        "id": "lidar_detection_raw_udp"
+    },
+    "nodes": [
+        {
+            "id": "source",
+            "type": "bin_source",
+            "params": {
+                "input_path": "",
+                "input_type": "raw_udp"
+            }
+        },
+        {
+            "id": "infer",
+            "type": "detection_infer",
+            "params": {
+                "model_path": "../model/pointpillar.plan",
+                "score_thresh": 0.3,
+                "nms_thresh": 0.01
+            }
+        },
+        {
+            "id": "bev",
+            "type": "bev_visualizer",
+            "params": {
+                "output_dir": "./out/raw_udp",
+                "output_type": "bev_visualizer"
+            }
+        }
+    ],
+    "edges": [
+        {"from": "source", "to": "infer"},
+        {"from": "infer", "to": "bev"}
+    ]
+}

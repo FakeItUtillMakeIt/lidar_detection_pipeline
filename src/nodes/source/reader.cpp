@@ -1,5 +1,6 @@
 #include "reader.hpp"
 #include "bin_reader.hpp"
+#include "raw_udp_reader.hpp"
 #include "velodyne_reader.hpp"
 
 namespace pipeline {
@@ -10,6 +11,8 @@ std::shared_ptr<PointCloudReader> createReader(const ReaderConfig& config) {
             return std::make_shared<BinFileReader>(config);
         case ReaderType::VELODYNE_UDP:
             return std::make_shared<VelodyneUdpReader>(config);
+        case ReaderType::RAW_UDP:
+            return std::make_shared<RawUdpReader>(config);
         default:
             return nullptr;
     }

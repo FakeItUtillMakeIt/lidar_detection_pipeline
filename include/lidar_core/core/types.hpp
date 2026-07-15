@@ -50,6 +50,7 @@ struct Detection {
 enum class ReaderType {
     BIN_FILE,
     VELODYNE_UDP,
+    RAW_UDP,
 };
 
 enum class OutputType {

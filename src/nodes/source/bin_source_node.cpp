@@ -36,6 +36,8 @@ bool BinSourceNode::start() {
     
     if (input_type_ == "velodyne") {
         config.type = pipeline::ReaderType::VELODYNE_UDP;
+    } else if (input_type_ == "raw_udp") {
+        config.type = pipeline::ReaderType::RAW_UDP;
     } else {
         config.type = pipeline::ReaderType::BIN_FILE;
     }

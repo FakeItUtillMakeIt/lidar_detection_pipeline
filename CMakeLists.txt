@@ -121,6 +121,7 @@ set(SOURCE_NODE_SOURCES
     src/nodes/source/reader.cpp
     src/nodes/source/bin_reader.cpp
     src/nodes/source/velodyne_reader.cpp
+    src/nodes/source/raw_udp_reader.cpp
     src/nodes/source/bin_source_node.cpp
 )
 
