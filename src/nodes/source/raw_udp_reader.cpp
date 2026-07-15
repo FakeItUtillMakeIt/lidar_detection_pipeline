@@ -103,6 +103,7 @@ bool RawUdpReader::read(PointCloud& cloud) {
                 cloud.points.swap(buf_);
                 LOG_INFO_FMT("[RawUdpReader] Frame {}: {} points",
                              cur_frame_id_, cloud.points.size());
+                cloud.frame_id = cur_frame_id_;
                 cur_frame_id_ = 0xFFFFFFFF;
                 expected_total_ = 0;
                 return true;
