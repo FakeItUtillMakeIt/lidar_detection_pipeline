@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -44,13 +45,11 @@ bool VelodyneUdpReader::open() {
         return false;
     }
 
-    // 100ms receive timeout so read() returns periodically with accumulated points
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 100000;
-    setsockopt(sockfd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    // 非阻塞模式: 由主循环 10ms 空闲轮询控制等待，避免每次空等 100ms
+    int flags = fcntl(sockfd_, F_GETFL, 0);
+    fcntl(sockfd_, F_SETFL, flags | O_NONBLOCK);
 
-    LOG_INFO_FMT("[VelodyneReader] Listening on UDP port {}", config_.velodyne_port);
+    LOG_INFO_FMT("[VelodyneReader] Listening on UDP port {} (non-blocking)", config_.velodyne_port);
     return true;
 }
 
@@ -73,7 +72,7 @@ bool VelodyneUdpReader::read(PointCloud& cloud) {
     uint8_t buf[kMaxRecvSize];
     int total_packets = 0;
 
-    // Receive packets until timeout or max points reached
+    // 非阻塞读取所有可用包
     while (static_cast<int>(cloud.points.size()) < kMaxPointsPerRead) {
         struct sockaddr_in sender;
         socklen_t sender_len = sizeof(sender);
@@ -94,7 +93,7 @@ bool VelodyneUdpReader::read(PointCloud& cloud) {
         }
     }
 
-    LOG_INFO_FMT("[VelodyneReader] Received {} packets, {} points", total_packets, cloud.points.size());
+    LOG_DEBUG_FMT("[VelodyneReader] Received {} packets, {} points", total_packets, cloud.points.size());
     return !cloud.points.empty();
 }
 
