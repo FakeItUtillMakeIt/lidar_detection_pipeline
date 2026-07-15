@@ -15,7 +15,7 @@
             "id": "infer",
             "type": "detection_infer",
             "params": {
-                "model_path": "../model/pointpillar.plan",
+                "model_path": "../model/pointpillar/pointpillar.plan",
                 "score_thresh": 0.1,
                 "nms_thresh": 0.01
             }
@@ -66,8 +66,8 @@
                 "boundary_inflation": 0.3,
                 "boundary_repulsive_gain": 50.0,
                 "boundary_influence_dist": 2.0,
-                "goal_x": 100.0,
-                "goal_y": 0.0,
+                "goal_x": 50.0,
+                "goal_y": 10.0,
                 "enable_control": true,
                 "control_frequency": 10.0
             }

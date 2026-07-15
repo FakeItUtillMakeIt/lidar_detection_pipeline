@@ -1,0 +1,36 @@
+{
+    "pipeline": {
+        "id": "lidar_detection_simple"
+    },
+    "nodes": [
+        {
+            "id": "source",
+            "type": "bin_source",
+            "params": {
+                "input_path": "../data/kitti_seq00",
+                "input_type": "bin"
+            }
+        },
+        {
+            "id": "infer",
+            "type": "detection_infer",
+            "params": {
+                "model_path": "../model/pointpillar.plan",
+                "score_thresh": 0.3,
+                "nms_thresh": 0.01
+            }
+        },
+        {
+            "id": "file_output",
+            "type": "file_output",
+            "params": {
+                "output_dir": "./out/simple",
+                "output_type": "file"
+            }
+        }
+    ],
+    "edges": [
+        {"from": "source", "to": "infer"},
+        {"from": "infer", "to": "file_output"}
+    ]
+}

@@ -1,0 +1,61 @@
+{
+    "pipeline": {
+        "id": "lidar_detection_with_tracking"
+    },
+    "nodes": [
+        {
+            "id": "source",
+            "type": "bin_source",
+            "params": {
+                "input_path": "../data/kitti_seq01",
+                "input_type": "bin"
+            }
+        },
+        {
+            "id": "infer",
+            "type": "detection_infer",
+            "params": {
+                "model_path": "../model/pointpillar.plan",
+                "score_thresh": 0.2,
+                "nms_thresh": 0.01
+            }
+        },
+        {
+            "id": "tracker",
+            "type": "tracker",
+            "params": {
+                "tracker_type": "ocsort",
+                "ocsort_config": {
+                    "det_thresh": 0.2,
+                    "max_age": 50,
+                    "min_hits": 2,
+                    "iou_threshold": 0.2,
+                    "delta_t": 3,
+                    "inertia": 0.3,
+                    "use_byte": false
+                }
+            }
+        },
+        {
+            "id": "file_output",
+            "type": "file_output",
+            "params": {
+                "output_dir": "./out/tracked",
+                "output_type": "file"
+            }
+        },
+        {
+            "id": "bev_vis",
+            "type": "bev_visualizer",
+            "params": {
+                "output_dir": "./out/tracked/bev"
+            }
+        }
+    ],
+    "edges": [
+        {"from": "source", "to": "infer"},
+        {"from": "infer", "to": "tracker"},
+        {"from": "tracker", "to": "file_output"},
+        {"from": "tracker", "to": "bev_vis"}
+    ]
+}

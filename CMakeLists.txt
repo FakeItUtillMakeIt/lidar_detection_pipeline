@@ -134,6 +134,9 @@ set(INFER_NODE_SOURCES
     src/nodes/infer/lidar-voxelization.cu
     src/nodes/infer/pillarscatter-kernel.cu
     src/nodes/infer/detection_infer_node.cpp
+    src/nodes/infer/second-voxelization.cu
+    src/nodes/infer/second-backbone.cu
+    src/nodes/infer/second-detector.cpp
 )
 
 # 输出节点
@@ -244,7 +247,31 @@ set_target_properties(lidar_app PROPERTIES
 )
 
 # ------------------------------------------------------------------------------
-# 7. 输出构建摘要
+# 7. 测试执行程序
+# ------------------------------------------------------------------------------
+add_executable(test_second tools/test_second_detailed.cpp)
+
+target_include_directories(test_second
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/common
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        $ENV{TensorRT_Inc}
+)
+
+target_link_libraries(test_second
+    PRIVATE
+        lidar_nodes
+        lidar_core
+        -lcudart
+        libnvinfer.so
+        libnvinfer_plugin.so
+)
+
+# ------------------------------------------------------------------------------
+# 8. 输出构建摘要
 # ------------------------------------------------------------------------------
 message(STATUS "")
 message(STATUS "=== lidar_detection_pipeline Configuration Summary ===")
