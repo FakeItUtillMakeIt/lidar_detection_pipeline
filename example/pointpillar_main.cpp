@@ -4,6 +4,7 @@
 #include <string>
 #include <csignal>
 #include <fstream>
+#include <thread>
 
 #include <nlohmann/json.hpp>
 
@@ -57,14 +58,26 @@ static int runSync(const nlohmann::json& config) {
         return 1;
     }
 
+    auto bin_source = std::dynamic_pointer_cast<lidar_core::nodes::BinSourceNode>(source_node);
+
     uint64_t frame_count = 0;
     auto total_start = std::chrono::high_resolution_clock::now();
 
+    // idle timeout: 连续 5 秒无数据则退出
+    const int kIdleLimit = 500;
+    int idle_count = 0;
+
     while (g_running && pipeline->isRunning()) {
         auto cloud_packet = std::make_shared<lidar_core::core::PointCloudPacket>();
-        if (!std::dynamic_pointer_cast<lidar_core::nodes::BinSourceNode>(source_node)->readNext(cloud_packet)) {
-            break;
+        if (bin_source && !bin_source->readNext(cloud_packet)) {
+            if (++idle_count >= kIdleLimit) {
+                LOG_INFO_FMT("[Main] No data for {} consecutive polls, exiting", idle_count);
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
         }
+        idle_count = 0;  // 有数据则重置空闲计数
         infer_node->pushData(cloud_packet);
         frame_count++;
     }
