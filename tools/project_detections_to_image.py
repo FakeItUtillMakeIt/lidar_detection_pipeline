@@ -240,7 +240,7 @@ def main():
 
             for i, j in edges:
                 if valid_mask[i] and valid_mask[j]:
-                    cv2.line(img, tuple(pts[i]), tuple(pts[j]), color, 2,
+                    cv2.line(img, tuple(pts[i]), tuple(pts[j]), color, 1,
                              cv2.LINE_AA)
 
             # 底面中心位置
@@ -249,8 +249,8 @@ def main():
                     0 <= center_2d[1] < img_h):
                 cx, cy = int(center_2d[0]), int(center_2d[1])
                 cv2.circle(img, (cx, cy), 4, color, -1)
-                cv2.putText(img, label, (cx - 30, cy - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                # cv2.putText(img, label, (cx - 30, cy - 10),
+                #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
             valid_count += 1
 

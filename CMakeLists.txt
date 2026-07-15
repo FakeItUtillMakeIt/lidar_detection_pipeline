@@ -125,18 +125,18 @@ set(SOURCE_NODE_SOURCES
 
 # 推理节点 (包含 CUDA 文件)
 set(INFER_NODE_SOURCES
-    src/nodes/infer/engine.cpp
-    src/nodes/infer/detector.cpp
-    src/nodes/infer/pointpillar-scatter.cpp
-    src/nodes/infer/common/tensorrt.cpp
-    src/nodes/infer/lidar-backbone.cu
-    src/nodes/infer/lidar-postprocess.cu
-    src/nodes/infer/lidar-voxelization.cu
-    src/nodes/infer/pillarscatter-kernel.cu
+    src/nodes/infer/pointpillar/engine.cpp
     src/nodes/infer/detection_infer_node.cpp
-    src/nodes/infer/second-voxelization.cu
-    src/nodes/infer/second-backbone.cu
-    src/nodes/infer/second-detector.cpp
+    src/nodes/infer/common/tensorrt.cpp
+    src/nodes/infer/pointpillar/detector.cpp
+    src/nodes/infer/pointpillar/pointpillar-scatter.cpp
+    src/nodes/infer/pointpillar/lidar-backbone.cu
+    src/nodes/infer/pointpillar/lidar-postprocess.cu
+    src/nodes/infer/pointpillar/lidar-voxelization.cu
+    src/nodes/infer/pointpillar/pillarscatter-kernel.cu
+    src/nodes/infer/second/second-voxelization.cu
+    src/nodes/infer/second/second-backbone.cu
+    src/nodes/infer/second/second-detector.cpp
 )
 
 # 输出节点
@@ -199,6 +199,8 @@ target_include_directories(lidar_nodes
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/source
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/common
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/pointpillar
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/second
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/output
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/track
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/attribute
@@ -229,7 +231,7 @@ endif()
 # ------------------------------------------------------------------------------
 # 6. 主程序构建
 # ------------------------------------------------------------------------------
-add_executable(lidar_app src/main.cpp 
+add_executable(lidar_app example/pointpillar_main.cpp 
     ${PROJECT_SOURCE_DIR}/3rd_party/log_mgr/log_mgr.cpp)
 
 target_link_libraries(lidar_app
@@ -249,13 +251,15 @@ set_target_properties(lidar_app PROPERTIES
 # ------------------------------------------------------------------------------
 # 7. 测试执行程序
 # ------------------------------------------------------------------------------
-add_executable(test_second tools/test_second_detailed.cpp)
+add_executable(test_second example/test_second_detailed.cpp)
 
 target_include_directories(test_second
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer
         ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/common
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/pointpillar
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nodes/infer/second
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
         $ENV{TensorRT_Inc}

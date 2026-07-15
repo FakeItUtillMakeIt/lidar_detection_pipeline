@@ -12,7 +12,7 @@
 #include "lidar_core/nodes/i_source_node.h"
 #include "lidar_core/nodes/i_infer_node.h"
 #include "lidar_core/nodes/i_output_node.h"
-#include "nodes/source/bin_source_node.h"
+#include "src/nodes/source/bin_source_node.h"
 
 #include "3rd_party/log_mgr/log_mgr.h"
 

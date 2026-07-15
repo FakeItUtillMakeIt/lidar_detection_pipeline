@@ -2,7 +2,7 @@
 #pragma once
 
 #include "lidar_core/nodes/i_infer_node.h"
-#include "engine.hpp"
+#include "pointpillar/engine.hpp"
 #include <memory>
 
 namespace lidar_core {

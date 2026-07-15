@@ -1,43 +1,123 @@
 # Lidar Detection Pipeline
 
-基于 TensorRT 的 PointPillars 3D 目标检测部署，支持 x86 (RTX 3090) 和 Jetson Orin。
+基于 TensorRT 的 PointPillars 3D 目标检测部署管线，支持 x86 (RTX 3090)。
 
 ## 项目结构
 
 ```
 lidar_detection_pipeline/
 ├── src/
-│   ├── common/              # TensorRT 封装、数据类型定义
-│   ├── core/                # CUDA 检测核心（Voxelization + Backbone + PostProcess）
-│   │   ├── lidar-voxelization.cu   # 体素化 + 特征生成
-│   │   ├── lidar-backbone.cu       # TRT backbone + FP32 转换
-│   │   ├── lidar-postprocess.cu    # 解码 + NMS
-│   │   ├── pointpillar-scatter.cu  # PPScatter TRT 插件
-│   │   ├── detector.cpp            # Detector 接口封装
-│   │   └── detector.hpp
-│   └── pipeline/            # 管线层
-│       ├── types.hpp        # PointCloud, Detection, Config 定义
-│       ├── reader.hpp/cpp   # 输入接口（文件/UDP）
-│       ├── bin_reader.cpp   # KITTI .bin 文件读取
-│       ├── velodyne_reader.cpp # Velodyne UDP（预留）
-│       ├── engine.hpp/cpp   # 推理引擎（支持异步）
-│       ├── output.hpp/cpp   # 输出接口工厂
-│       ├── file_writer.cpp  # 文件输出
-│       ├── callback_output.cpp # 回调输出
-│       └── bev_visualizer.cpp   # OpenCV BEV 可视化
-├── model/                   # TRT 引擎文件
-├── data/                    # KITTI 测试数据
-├── out/                     # 检测输出
-└── build/                   # 编译输出
+│   ├── main.cpp                    # 入口：JSON config → Pipeline
+│   ├── core/                       # CUDA 检测核心（由 src/nodes/infer/ 引用）
+│   │   ├── common/
+│   │   │   ├── tensorrt.cpp/.hpp   # TensorRT 引擎封装
+│   │   │   ├── check.hpp           # CUDA 错误检查
+│   │   │   ├── launch.cuh          # 核函数启动辅助
+│   │   │   └── dtype.hpp           # 数据类型
+│   │   └── nodes/
+│   │       ├── i_source_node.h     # 源节点接口
+│   │       ├── i_infer_node.h      # 推理节点接口
+│   │       └── i_output_node.h     # 输出节点接口
+│   ├── nodes/
+│   │   ├── infer/
+│   │   │   ├── lidar-voxelization.cu/.hpp  # GPU 体素化（FP16→10特征）
+│   │   │   ├── lidar-backbone.cu/.hpp      # TRT 引擎推理 + FP16→FP32
+│   │   │   ├── lidar-postprocess.cu/.hpp   # Anchor 解码 + NMS（GPU）
+│   │   │   ├── pointpillar-scatter.cu      # (已废弃) 旧版 PPScatter 插件
+│   │   │   ├── detector.cpp/.hpp           # Detector 接口封装
+│   │   │   ├── engine.hpp/.cpp             # PointPillarsEngine（同步/异步）
+│   │   │   ├── detection_infer_node.h/.cpp # 推理节点实现
+│   │   │   └── second-*                    # SECOND 管线（独立，不用于 PointPillar）
+│   │   ├── source/
+│   │   │   ├── bin_source_node.h/.cpp      # KITTI .bin 文件读取
+│   │   │   └── bin_reader.cpp              # .bin 解析
+│   │   ├── output/
+│   │   │   ├── file_output_node.h/.cpp     # 文本文件输出
+│   │   │   └── bev_visualizer_node.h/.cpp  # OpenCV BEV 可视化
+│   │   ├── track/                 # 跟踪 (OC-SORT)
+│   │   ├── attribute/             # 属性计算
+│   │   ├── planner/               # 路径规划
+│   │   ├── control/               # 控制
+│   │   └── registry/              # 节点工厂注册
+│   ├── config/                    # JSON 管线配置
+│   ├── model/                     # TRT 引擎文件
+│   ├── data/                      # KITTI 测试数据（000000.bin ~ 000009.bin）
+│   ├── out/                       # 检测输出
+│   └── tools/                     # 模型导出/验证工具
 ```
+
+## 架构
+
+### 管线（Pipeline）模式
+
+基于配置文件驱动，JSON 定义节点（nodes）和数据流（edges）。支持两种执行模式：
+
+- **同步模式**：主线程逐帧读取→推理→输出
+- **异步模式**：读取/推理/输出分线程并行
+
+启动入口：
+
+```bash
+./lidar_app --config ../config/pipeline.json       # 同步
+./lidar_app --config ../config/pipeline.json --async  # 异步
+```
+
+### 数据流
+
+```
+.bin (KITTI 格式: x,y,z,intensity)
+  ↓ BinSourceNode (CPU)
+PointCloudPacket
+  ↓ DetectionInferNode (GPU)
+    ├── Voxelization (CUDA):  xyz→10 特征（含偏移量）
+    ├── TRT Engine (FP32):    PFN→Scatter→2D Backbone→Head
+    └── PostProcess (CUDA):   Anchor 解码 + NMS
+Detection[]
+  ↓ FileOutputNode / BEVVisualizerNode
+.txt / bev_*.png
+```
+
+### 管线配置示例
+
+`pipeline_simple.json`:
+```json
+{
+    "pipeline": {"id": "lidar_detection_simple"},
+    "nodes": [
+        {"id": "source", "type": "bin_source",
+         "params": {"input_path": "../data", "input_type": "bin"}},
+        {"id": "infer", "type": "detection_infer",
+         "params": {"model_path": "../model/pointpillar.plan",
+                    "score_thresh": 0.3, "nms_thresh": 0.01}},
+        {"id": "file_output", "type": "file_output",
+         "params": {"output_dir": "./out/simple", "output_type": "file"}}
+    ],
+    "edges": [
+        {"from": "source", "to": "infer"},
+        {"from": "infer", "to": "file_output"}
+    ]
+}
+```
+
+### 支持的节点类型
+
+| 类型 | 功能 | 配置参数 |
+|------|------|----------|
+| `bin_source` | 读取 KITTI .bin 文件/目录 | `input_path`, `input_type` |
+| `detection_infer` | PointPillar 推理 | `model_path`, `score_thresh`, `nms_thresh` |
+| `file_output` | 输出检测结果的 .txt 文件 | `output_dir`, `output_type` |
+| `bev_visualizer` | BEV 俯视图可视化 | `output_dir` |
+| `tracker` | OC-SORT 跟踪 | `det_thresh`, `max_age`, `iou_threshold` |
+| `attribute` | 属性计算 | `dt` |
 
 ## 环境依赖
 
 - CUDA 13.1 + cuDNN
 - TensorRT 11.0+
-- g++-9（CUDA 13.1 兼容性要求）
-- OpenCV 4.x（可选，BEV 可视化）
-- ROS2 Humble/Foxy（可选）
+- g++-9
+- OpenCV 4.x（BEV 可视化必需）
+- CMake ≥ 3.18
+- nlohmann-json（submodule）
 
 ## 编译
 
@@ -50,136 +130,91 @@ export TensorRT_Lib=/usr/lib/x86_64-linux-gnu/
 
 # 编译
 cd build
-cmake ..
+cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.1/bin/nvcc \
+      -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 \
+      -DCMAKE_CUDA_ARCHITECTURES=86 ..
 make -j$(nproc)
 ```
 
-可选编译选项：
+可选选项：
 ```bash
-cmake .. -DWITH_ROS2=ON     # 启用 ROS2 输出
+cmake .. -DWITH_ROS2=ON     # ROS2 输出
 cmake .. -DWITH_OPENCV=OFF  # 禁用 BEV 可视化
 ```
 
 ## 运行
 
 ```bash
+cd build
 export LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
-./lidar_app \
-    --input ../data \
-    --model ../model/pointpillar.plan \
-    --output-types file \
-    --timer
+# 简单检测（同步）
+./lidar_app --config ../config/pipeline_simple.json
+
+# 含可视化 + 跟踪
+./lidar_app --config ../config/pipeline_final.json
+
+# 异步模式
+./lidar_app --config ../config/pipeline.json --async
 ```
 
-### 参数说明
+## 模型转换
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `--input <path>` | 输入路径（.bin 文件或目录） | 必填 |
-| `--input-type <type>` | 输入类型：`bin`, `velodyne` | `bin` |
-| `--model <path>` | TRT 引擎路径 | `../model/pointpillar.plan` |
-| `--output <path>` | 输出目录 | `../out` |
-| `--output-types <types>` | 输出类型，逗号分隔：`file`, `vis`, `callback` | `file` |
-| `--async` | 启用异步推理 | 关闭 |
-| `--workers <n>` | 异步工作线程数 | 2 |
-| `--score-thresh <f>` | 置信度阈值 | 0.1 |
-| `--timer` | 显示每帧耗时 | 关闭 |
+当前模型使用 OpenPCDet 官方权重 `pointpillar_7728.pth`，导出为端到端 ONNX 后构建 TRT 引擎。
 
-## 模型转换流程
-
-### 1. 导出 ONNX
+### 导出流程
 
 ```bash
-cd /path/to/OpenPCDet
-python tool/export_onnx.py \
-    --cfg_file cfgs/kitti_models/pointpillar.yaml \
-    --ckpt checkpoint/pointpillar_7728.pth \
-    --data_path ../CUDA-PointPillars/data \
-    --out_dir ../CUDA-PointPillars/model
-```
+# 1. 导出 ONNX（PFN + Scatter + 2D Backbone + Head）
+cd /home/sevnce/lj/project/OpenPCDet/tools
+python3 ../path/to/lidar_detection_pipeline/tools/export_pointpillar_trt.py
 
-- 加载 OpenPCDet PointPillars 权重（`.pth`）
-- `ModelWrapper` 包装推理链：VFE → map_to_bev → backbone_2d → conv_cls/box/dir_cls
-- 输出原始卷积结果（raw conv deltas），不做 sigmoid/exp/anchor 解码
-- 输出：`pointpillar_raw.onnx`
-
-### 2. ONNX 图修改
-
-```bash
-cd /path/to/CUDA-PointPillars
-python tool/modify_onnx.py
-```
-
-使用 `onnx_graphsurgeon` 进行图手术：
-
-**后处理裁剪** (`simplify_postprocess`)：
-- 截断 conv 后的输出处理节点
-- 输出变为 3 个 raw 变量：`cls_preds[1,248,216,18]`、`box_preds[1,248,216,42]`、`dir_cls_preds[1,248,216,12]`
-
-**前处理简化** (`simplify_preprocess`)：
-- 插入 VFE 的 linear+BN+ReLU 操作
-- 插入 `PPScatterPlugin` 节点（自定义 TRT 插件）
-- 输入变为：`voxels[10000,32,4]`、`voxel_idxs[10000,4]`、`voxel_num[1]`
-
-最终输出：`pointpillar.onnx`（~20MB）
-
-### 3. 构建 TRT 引擎
-
-```bash
+# 2. 构建 TRT 引擎
 trtexec \
-    --onnx=./model/pointpillar.onnx \
-    --fp16 \
-    --plugins=build/libpointpillar_core.so \
-    --saveEngine=./model/pointpillar.plan \
-    --inputIOFormats=fp16:chw,int32:chw,int32:chw
+    --onnx=pointpillar_7728.onnx \
+    --saveEngine=pointpillar_7728.engine \
+    --memPoolSize=workspace:4096
+
+# 3. 替换引擎
+cp pointpillar_7728.engine pointpillar.engine
+cp pointpillar_7728.engine pointpillar.plan
 ```
 
-最终输出：`pointpillar.plan`（~30MB）
+### ONNX 模型规格
 
-### 转换流程图
+| 项目 | 说明 |
+|------|------|
+| 输入 | `voxels[40000,32,10]`, `voxel_idxs[40000,4]` |
+| 输出 | `cls_preds[1,248,216,18]`, `box_preds[1,248,216,42]`, `dir_cls_preds[1,248,216,12]` |
+| 节点数 | 173（全部标准 ONNX op，无自定义插件） |
+| 大小 | 71MB（FP32） |
 
+10 个特征构造（匹配 OpenPCDet `USE_ABSLOTE_XYZ=True`）：
 ```
-.pth (OpenPCDet 权重)
-  ↓ export_onnx.py
-pointpillar_raw.onnx
-  ↓ modify_onnx.py (onnx_graphsurgeon)
-pointpillar.onnx (嵌入 PPScatter 插件)
-  ↓ trtexec --fp16 --plugins=libpointpillar_core.so
-pointpillar.plan (TRT 引擎)
-```
-
-### BUILD
-```
-build:
-    export CUDA_Inc=/usr/local/cuda-13.1/include/ && export CUDA_Lib=/usr/local/cuda-13.1/lib64/ && export TensorRT_Inc=/usr/include/x86_64-linux-gnu/ && export TensorRT_Lib=/usr/lib/x86_64-linux-gnu/ && cd /home/sevnce/lj/project/lidar_detection_pipeline/build && rm -rf * && cmake .. && make -j$(nproc) 2>&1
-    
-    cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.1/bin/nvcc -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 -DCMAKE_CUDA_ARCHITECTURES=86 .. 2>&1
+x, y, z, intensity,
+x-μ_x, y-μ_y, z-μ_z,        # f_cluster
+x-cx, y-cy, z-cz             # f_center
 ```
 
-### RUN
-```
-run:
-    ./lidar_app --input ../data --model ../model/pointpillar.plan --output-types file --output ../out --timer 2>&1 
-```
+### 历史说明
 
-## 数据流
+旧版模型曾使用 `onnx_graphsurgeon` 图修改 + `PPScatter` 自定义 TRT 插件（`pointpillar-scatter.cu`），并在 C++ 中用 SECOND 3D 稀疏卷积作为 Backbone。当前架构已改为**单一 PointPillar TRT 引擎**，包含完整的 PFN→Scatter→2D Backbone→Head，无需插件和图手术。
 
-```
-.bin (KITTI 格式: x,y,z,intensity)
-  ↓ BinFileReader (CPU)
-PointCloud {x,y,z,intensity}
-  ↓ Voxelization (GPU, FP16)
-voxels[10000,32,10], voxel_idxs[10000,4], voxel_num[1]
-  ↓ TRT Backbone (GPU, FP16)
-cls_preds[1,248,216,18], box_preds[1,248,216,42], dir_cls_preds[1,248,216,12]
-  ↓ PostProcess (GPU, FP32)
-BoundingBox[] (x,y,z,w,l,h,rt,id,score)
-  ↓ DetectionResult 输出
-.txt / BEV 可视化 / 回调
-```
+## 检测参数
 
-## 类别与锚框
+### 点云参数
+
+| 参数 | 值 |
+|------|-----|
+| 点云范围 X | [0, 69.12] m |
+| 点云范围 Y | [-39.68, 39.68] m |
+| 点云范围 Z | [-3, 1] m |
+| 体素大小 XY | 0.16 m |
+| 体素大小 Z | 4 m |
+| 最大体素数 | 40000 |
+| 每体素最多点数 | 32 |
+
+### 类别与锚框
 
 | 类别 ID | 名称 | 锚框 (w,l,h) | 锚框朝向 |
 |---------|------|--------------|----------|
@@ -187,12 +222,26 @@ BoundingBox[] (x,y,z,w,l,h,rt,id,score)
 | 1 | Pedestrian | 0.8, 0.6, 1.73 | 0.0, π/2 |
 | 2 | Cyclist | 1.76, 0.6, 1.73 | 0.0, π/2 |
 
-- 共 6 个锚框（2 个朝向 × 3 个类别）
-- 体素大小：0.16m × 0.16m × 4m
-- 点云范围：[0, -39.68, -3] ~ [69.12, 39.68, 1]（米）
-- 每个体素最多 32 个点
+- 共 6 个锚框（2 朝向 × 3 类别）
+- 锚框底部高度偏移：[-1.78, -0.6, -0.6]
+
+## 输出格式
+
+检测结果写入 `.txt` 文件，每行格式：
+```
+x y z w l h rt id score -1 0 0 0 0
+```
+其中 `(x,y,z)` 为中心坐标，`(w,l,h)` 为尺寸，`rt` 为朝向角（弧度），`id` 为类别 ID，`score` 为置信度。
+
+## BEV 可视化
+
+`bev_visualizer_node` 生成俯视 BEV 图像（PNG），显示点云（灰度）和检测框（彩色），z > -1.5m 的框高亮显示。
 
 ## 性能
 
-- **推理延迟**：~7ms/帧（RTX 3090, FP16, 含预处理）
-- **Python vs C++ 精度对比**：99.2% 召回率（125 Python / 126 C++ / 124 匹配）
+| 阶段 | 延迟 | 说明 |
+|------|------|------|
+| Voxelization + Copy | ~1ms | GPU FP16→FP32 转换 |
+| TRT Inference | ~4.5ms | FP32，RTX 3090 |
+| PostProcess | <1ms | Anchor 解码 + NMS |
+| **合计** | **~6ms/帧** | ~170 FPS |
