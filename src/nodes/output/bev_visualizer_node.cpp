@@ -56,7 +56,12 @@ bool BEVVisualizerNode::start() {
     }
 
     if (show_window_) {
-        cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE);
+        try {
+            cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE);
+        } catch (const cv::Exception& e) {
+            LOG_WARN_FMT("[BEVVisualizerNode] Cannot create window (no X server?): {}", e.what());
+            show_window_ = false;
+        }
     }
 #else
     LOG_ERROR_FMT("[BEVVisualizerNode] OpenCV not available");
@@ -127,8 +132,13 @@ void BEVVisualizerNode::renderBEV(const std::vector<core::PointXYZI>& points,
 
     // 显示窗口或保存图片
     if (show_window_) {
-        cv::imshow(window_name_, img);
-        cv::waitKey(1);
+        try {
+            cv::imshow(window_name_, img);
+            cv::waitKey(1);
+        } catch (const cv::Exception& e) {
+            LOG_WARN_FMT("[BEVVisualizerNode] Display error: {}", e.what());
+            show_window_ = false;
+        }
     } else if (!output_dir_.empty()) {
         char filename[256];
         snprintf(filename, sizeof(filename), "%s/bev_%06" PRIu64 ".png", output_dir_.c_str(), frame_id);
