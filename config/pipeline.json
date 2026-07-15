@@ -58,7 +58,7 @@
                 "attractive_gain": 0.5,
                 "repulsive_gain": 200.0,
                 "obstacle_influence_dist": 5.0,
-                "enable_boundary": true,
+                "enable_boundary": false,
                 "boundary_left": 3.75,
                 "boundary_right": -3.75,
                 "boundary_start_x": 0.0,
@@ -66,7 +66,7 @@
                 "boundary_inflation": 0.3,
                 "boundary_repulsive_gain": 50.0,
                 "boundary_influence_dist": 2.0,
-                "goal_x": 50.0,
+                "goal_x": 70.0,
                 "goal_y": 10.0,
                 "enable_control": true,
                 "control_frequency": 10.0

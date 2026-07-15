@@ -29,8 +29,8 @@ struct GridNode {
 // A*规划器参数
 struct AStarParams {
     float grid_resolution = 0.5f;    // 网格分辨率 (m)
-    int max_grid_x = 300;           // x方向最大网格数
-    int max_grid_y = 50;            // y方向最大网格数
+    int max_grid_x = 300;           // x方向最大网格数 (0~150m)
+    int max_grid_y = 200;           // y方向最大网格数 (±50m)
     float obstacle_inflation = 0.5f; // 障碍物膨胀半径 (m)
     bool use_diagonal = true;       // 是否允许对角线移动
 };

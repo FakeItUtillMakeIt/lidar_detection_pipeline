@@ -89,7 +89,9 @@ void TrajectoryVisualizerNode::pushData(std::shared_ptr<core::BasePacket> packet
                     plan_packet->obstacles,
                     plan_packet->trajectory,
                     plan_packet->is_feasible,
-                    plan_packet->frame_id);
+                    plan_packet->frame_id,
+                    plan_packet->goal_x,
+                    plan_packet->goal_y);
 #endif
 }
 
@@ -100,7 +102,9 @@ void TrajectoryVisualizerNode::renderTrajectory(
     const std::vector<core::Detection>& detections,
     const std::vector<core::PlanningPacket::PathPoint>& trajectory,
     bool is_feasible,
-    uint64_t frame_id) {
+    uint64_t frame_id,
+    float goal_x,
+    float goal_y) {
     
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -132,8 +136,8 @@ void TrajectoryVisualizerNode::renderTrajectory(
     drawTrajectory(img, trajectory, is_feasible);
 
     // 绘制目标点 (坐标变换: LiDAR→图像)
-    int goal_px = width_ / 2 - static_cast<int>(0.0f * scale_);
-    int goal_py = height_ - 1 - static_cast<int>((100.0f - origin_x_) * scale_);
+    int goal_px = width_ / 2 - static_cast<int>(goal_y * scale_);
+    int goal_py = height_ - 1 - static_cast<int>((goal_x - origin_x_) * scale_);
     cv::circle(img, cv::Point(goal_px, goal_py), 10, {0, 255, 255}, -1);
     cv::putText(img, "Goal", cv::Point(goal_px + 15, goal_py), 
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, {0, 255, 255}, 1);

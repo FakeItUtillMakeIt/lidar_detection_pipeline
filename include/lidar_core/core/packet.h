@@ -84,6 +84,10 @@ public:
     };
     std::vector<PathPoint> trajectory;             // 规划轨迹
     
+    // 规划目标点
+    float goal_x = 0.0f;
+    float goal_y = 0.0f;
+
     // 规划状态
     bool is_feasible = false;                      // 轨迹是否可行
     std::string planning_status;                   // 规划状态信息

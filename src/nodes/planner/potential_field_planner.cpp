@@ -108,6 +108,8 @@ void PotentialFieldPlanner::pushData(std::shared_ptr<core::BasePacket> packet) {
     plan_packet->timestamp_ns = packet->timestamp_ns;
     plan_packet->obstacles = det_packet->detections;
     plan_packet->cloud_points = det_packet->cloud_points;
+    plan_packet->goal_x = config_.goal_x;
+    plan_packet->goal_y = config_.goal_y;
     plan_packet->is_feasible = latest_trajectory_.is_feasible;
     plan_packet->planning_status = latest_trajectory_.status;
     plan_packet->planning_timestamp_ns = packet->timestamp_ns;

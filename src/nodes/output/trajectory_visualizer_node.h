@@ -34,7 +34,9 @@ private:
                          const std::vector<core::Detection>& detections,
                          const std::vector<core::PlanningPacket::PathPoint>& trajectory,
                          bool is_feasible,
-                         uint64_t frame_id);
+                         uint64_t frame_id,
+                         float goal_x,
+                         float goal_y);
     void drawBox(cv::Mat& img, const core::Detection& det, const cv::Scalar& color);
     void drawTrajectory(cv::Mat& img, 
                        const std::vector<core::PlanningPacket::PathPoint>& trajectory,
